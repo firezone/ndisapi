@@ -1,9 +1,7 @@
-pub mod driver{
+pub mod driver {
     use std::mem::MaybeUninit;
 
-    use windows::{
-        core::*, Win32::Foundation::*,
-    };
+    use windows::{core::*, Win32::Foundation::*};
 
     pub const NDISRD_DRIVER_NAME: ::windows::core::PCWSTR = w!("\\\\.\\NDISRD");
     pub const ADAPTER_NAME_SIZE: u32 = 256;
@@ -56,7 +54,7 @@ pub mod driver{
 
     /** TcpAdapterList
      * * Rust equivalent for TCP_AdapterList
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct TcpAdapterList {
@@ -70,7 +68,7 @@ pub mod driver{
 
     /** ListEntry
      * * Rust equivalent for LIST_ENTRY
-    */
+     */
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct ListEntry {
@@ -80,7 +78,7 @@ pub mod driver{
 
     /** IntermediateBufferHeaderUnion
      * * Rust equivalent for HANDLE and LIST_ENTRY union used for INTERMEDIATE_BUFFER
-    */
+     */
     #[repr(C, packed)]
     #[derive(Copy, Clone)]
     pub union IntermediateBufferHeaderUnion {
@@ -90,7 +88,7 @@ pub mod driver{
 
     /** IntermediateBuffer
      * * Rust equivalent for INTERMEDIATE_BUFFER
-    */
+     */
     #[repr(C, packed)]
     #[derive(Copy, Clone)]
     pub struct IntermediateBuffer {
@@ -106,9 +104,7 @@ pub mod driver{
 
     impl IntermediateBuffer {
         pub fn new() -> Self {
-            unsafe{
-                MaybeUninit::zeroed().assume_init()
-            }
+            unsafe { MaybeUninit::zeroed().assume_init() }
         }
     }
 
@@ -120,26 +116,26 @@ pub mod driver{
 
     /** AdapterMode
      * * Rust equivalent for ADAPTER_MODE
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct AdapterMode {
         pub adapter_handle: HANDLE,
         pub flags: u32,
     }
-    
+
     /** EthPacket
      * * Rust equivalent for NDISRD_ETH_Packet
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthPacket {
         pub buffer: *mut IntermediateBuffer,
     }
-    
+
     /** EthRequest
      * * Rust equivalent for ETH_REQUEST
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthRequest {
@@ -149,7 +145,7 @@ pub mod driver{
 
     /** EthMRequest
      * * Rust equivalent for ETH_M_REQUEST using const generics
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthMRequest<const N: usize> {
@@ -158,44 +154,44 @@ pub mod driver{
         pub packet_success: ::std::os::raw::c_uint,
         pub packets: [EthPacket; N],
     }
-    
+
     /** AdapterEvent
      * * Rust equivalent for ADAPTER_EVENT
-    */
+     */
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct AdapterEvent {
         pub adapter_handle: HANDLE,
         pub event_handle: HANDLE,
     }
-    
-    pub const IOCTL_NDISRD_GET_VERSION : u32 = 0x830020c0;
-    pub const IOCTL_NDISRD_GET_TCPIP_INTERFACES : u32 = 0x830020c4;
-    pub const IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER : u32 = 0x830020c8;
-    pub const IOCTL_NDISRD_SEND_PACKET_TO_MSTCP : u32 = 0x830020cc;
-    pub const IOCTL_NDISRD_READ_PACKET : u32 = 0x830020d0;
-    pub const IOCTL_NDISRD_SET_ADAPTER_MODE : u32 = 0x830020d4;
-    pub const IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE : u32 = 0x830020d8;
-    pub const IOCTL_NDISRD_SET_EVENT : u32 = 0x830020dc;
-    pub const IOCTL_NDISRD_NDIS_SET_REQUEST : u32 = 0x830020e0;
-    pub const IOCTL_NDISRD_NDIS_GET_REQUEST : u32 = 0x830020e4;
-    pub const IOCTL_NDISRD_SET_WAN_EVENT : u32 = 0x830020e8;
-    pub const IOCTL_NDISRD_SET_ADAPTER_EVENT : u32 = 0x830020ec;
-    pub const IOCTL_NDISRD_ADAPTER_QUEUE_SIZE : u32 = 0x830020f0;
-    pub const IOCTL_NDISRD_GET_ADAPTER_MODE : u32 = 0x830020f4;
-    pub const IOCTL_NDISRD_SET_PACKET_FILTERS : u32 = 0x830020f8;
-    pub const IOCTL_NDISRD_RESET_PACKET_FILTERS : u32 = 0x830020fc;
-    pub const IOCTL_NDISRD_GET_PACKET_FILTERS_TABLESIZE : u32 = 0x83002100;
-    pub const IOCTL_NDISRD_GET_PACKET_FILTERS : u32 = 0x83002104;
-    pub const IOCTL_NDISRD_GET_PACKET_FILTERS_RESET_STATS : u32 = 0x83002108;
-    pub const IOCTL_NDISRD_GET_RAS_LINKS : u32 = 0x8300210c;
-    pub const IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER : u32 = 0x83002110;
-    pub const IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP : u32 = 0x83002114;
-    pub const IOCTL_NDISRD_READ_PACKETS : u32 = 0x83002118;
-    pub const IOCTL_NDISRD_SET_ADAPTER_HWFILTER_EVENT : u32 = 0x8300211c;
-    pub const IOCTL_NDISRD_INITIALIZE_FAST_IO : u32 = 0x83002120;
-    pub const IOCTL_NDISRD_READ_PACKETS_UNSORTED : u32 = 0x83002124;
-    pub const IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER_UNSORTED : u32 = 0x83002128;
-    pub const IOCTL_NDISRD_SEND_PACKET_TO_MSTCP_UNSORTED : u32 = 0x8300212c;
-    pub const IOCTL_NDISRD_ADD_SECOND_FAST_IO_SECTION : u32 = 0x83002130;
+
+    pub const IOCTL_NDISRD_GET_VERSION: u32 = 0x830020c0;
+    pub const IOCTL_NDISRD_GET_TCPIP_INTERFACES: u32 = 0x830020c4;
+    pub const IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER: u32 = 0x830020c8;
+    pub const IOCTL_NDISRD_SEND_PACKET_TO_MSTCP: u32 = 0x830020cc;
+    pub const IOCTL_NDISRD_READ_PACKET: u32 = 0x830020d0;
+    pub const IOCTL_NDISRD_SET_ADAPTER_MODE: u32 = 0x830020d4;
+    pub const IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE: u32 = 0x830020d8;
+    pub const IOCTL_NDISRD_SET_EVENT: u32 = 0x830020dc;
+    pub const IOCTL_NDISRD_NDIS_SET_REQUEST: u32 = 0x830020e0;
+    pub const IOCTL_NDISRD_NDIS_GET_REQUEST: u32 = 0x830020e4;
+    pub const IOCTL_NDISRD_SET_WAN_EVENT: u32 = 0x830020e8;
+    pub const IOCTL_NDISRD_SET_ADAPTER_EVENT: u32 = 0x830020ec;
+    pub const IOCTL_NDISRD_ADAPTER_QUEUE_SIZE: u32 = 0x830020f0;
+    pub const IOCTL_NDISRD_GET_ADAPTER_MODE: u32 = 0x830020f4;
+    pub const IOCTL_NDISRD_SET_PACKET_FILTERS: u32 = 0x830020f8;
+    pub const IOCTL_NDISRD_RESET_PACKET_FILTERS: u32 = 0x830020fc;
+    pub const IOCTL_NDISRD_GET_PACKET_FILTERS_TABLESIZE: u32 = 0x83002100;
+    pub const IOCTL_NDISRD_GET_PACKET_FILTERS: u32 = 0x83002104;
+    pub const IOCTL_NDISRD_GET_PACKET_FILTERS_RESET_STATS: u32 = 0x83002108;
+    pub const IOCTL_NDISRD_GET_RAS_LINKS: u32 = 0x8300210c;
+    pub const IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER: u32 = 0x83002110;
+    pub const IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP: u32 = 0x83002114;
+    pub const IOCTL_NDISRD_READ_PACKETS: u32 = 0x83002118;
+    pub const IOCTL_NDISRD_SET_ADAPTER_HWFILTER_EVENT: u32 = 0x8300211c;
+    pub const IOCTL_NDISRD_INITIALIZE_FAST_IO: u32 = 0x83002120;
+    pub const IOCTL_NDISRD_READ_PACKETS_UNSORTED: u32 = 0x83002124;
+    pub const IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER_UNSORTED: u32 = 0x83002128;
+    pub const IOCTL_NDISRD_SEND_PACKET_TO_MSTCP_UNSORTED: u32 = 0x8300212c;
+    pub const IOCTL_NDISRD_ADD_SECOND_FAST_IO_SECTION: u32 = 0x83002130;
 }

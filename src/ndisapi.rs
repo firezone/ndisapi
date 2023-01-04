@@ -1,6 +1,17 @@
-use std::{ffi::c_uint, mem::*};
+use std::{
+    ffi::c_uint,
+    mem::{size_of, MaybeUninit},
+};
 
-use windows::{core::*, Win32::Foundation::*, Win32::Storage::FileSystem::*, Win32::System::IO::*};
+use windows::{
+    core::Result,
+    Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE},
+    Win32::Storage::FileSystem::{
+        CreateFileW, FILE_ACCESS_FLAGS, FILE_FLAG_OVERLAPPED, FILE_SHARE_READ, FILE_SHARE_WRITE,
+        OPEN_EXISTING,
+    },
+    Win32::System::IO::DeviceIoControl,
+};
 
 use crate::driver::*;
 

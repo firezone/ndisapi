@@ -1,4 +1,4 @@
-pub(crate) use windows::core::*;
+use windows::core::Result;
 
 use ndisapi::ndisapi::*;
 

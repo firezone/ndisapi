@@ -1,4 +1,8 @@
-use windows::{core::*, Win32::Foundation::*, Win32::System::Threading::*};
+use windows::{
+    core::Result,
+    Win32::Foundation::HANDLE,
+    Win32::System::Threading::{CreateEventW, WaitForSingleObject},
+};
 
 use std::{collections::VecDeque, env};
 

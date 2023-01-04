@@ -69,7 +69,7 @@ fn main() -> Result<()> {
             }
 
             // Print some informations about the sliced packet
-            match SlicedPacket::from_ethernet(&ib.buffer) {
+            match SlicedPacket::from_ethernet(&ib.buffer.0) {
                 Err(value) => println!("Err {:?}", value),
                 Ok(value) => {
                     match value.link {

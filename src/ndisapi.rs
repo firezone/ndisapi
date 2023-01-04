@@ -159,10 +159,7 @@ impl Ndisapi {
                 driver::IOCTL_NDISRD_READ_PACKET,
                 Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
                 size_of::<driver::EthRequest>() as u32,
-                Some(std::mem::transmute::<
-                    &driver::EthRequest,
-                    *mut ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthRequest as *mut std::ffi::c_void),
                 size_of::<driver::EthRequest>() as u32,
                 None,
                 None,
@@ -199,15 +196,9 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKETS,
-                Some(std::mem::transmute::<
-                    &driver::EthMRequest<N>,
-                    *const ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<driver::EthMRequest<N>>() as u32,
-                Some(std::mem::transmute::<
-                    &driver::EthMRequest<N>,
-                    *mut ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthMRequest<N> as *mut std::ffi::c_void),
                 size_of::<driver::EthMRequest<N>>() as u32,
                 None,
                 None,
@@ -238,10 +229,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER,
-                Some(std::mem::transmute::<
-                    &driver::EthRequest,
-                    *const ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
                 size_of::<driver::EthRequest>() as u32,
                 None,
                 0,
@@ -271,10 +259,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKET_TO_MSTCP,
-                Some(std::mem::transmute::<
-                    &driver::EthRequest,
-                    *const ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
                 size_of::<driver::EthRequest>() as u32,
                 None,
                 0,
@@ -313,10 +298,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
-                Some(std::mem::transmute::<
-                    &driver::EthMRequest<N>,
-                    *const ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<driver::EthMRequest<N>>() as u32,
                 None,
                 0,
@@ -355,10 +337,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
-                Some(std::mem::transmute::<
-                    &driver::EthMRequest<N>,
-                    *const ::core::ffi::c_void,
-                >(&eth_request)),
+                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<driver::EthMRequest<N>>() as u32,
                 None,
                 0,
@@ -380,10 +359,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SET_ADAPTER_MODE,
-                Some(std::mem::transmute::<
-                    &driver::AdapterMode,
-                    *const ::core::ffi::c_void,
-                >(&adapter_mode)),
+                Some(&adapter_mode as *const driver::AdapterMode as *const std::ffi::c_void),
                 size_of::<driver::AdapterMode>() as u32,
                 None,
                 0,
@@ -409,10 +385,7 @@ impl Ndisapi {
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SET_EVENT,
-                Some(std::mem::transmute::<
-                    &driver::AdapterEvent,
-                    *const ::core::ffi::c_void,
-                >(&adapter_event)),
+                Some(&adapter_event as *const driver::AdapterEvent as *const std::ffi::c_void),
                 size_of::<driver::AdapterEvent>() as u32,
                 None,
                 0,

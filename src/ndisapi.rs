@@ -157,7 +157,7 @@ impl Ndisapi {
             result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKET,
-                Some(&eth_request as *const driver::driver::EthMRequest<N> as *const std::ffi::c_void),
+                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
                 size_of::<driver::EthRequest>() as u32,
                 Some(std::mem::transmute::<
                     &driver::EthRequest,

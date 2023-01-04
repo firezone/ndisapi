@@ -50,9 +50,8 @@ pub mod driver {
     pub const NETWORK_LAYER_VALID: u32 = 2;
     pub const TRANSPORT_LAYER_VALID: u32 = 4;
 
-    /** TcpAdapterList
-     * * Rust equivalent for TCP_AdapterList
-     */
+    /// TcpAdapterList
+    /// * Rust equivalent for TCP_AdapterList
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct TcpAdapterList {
@@ -64,9 +63,8 @@ pub mod driver {
         pub mtu: [::std::os::raw::c_ushort; 32usize],
     }
 
-    /** ListEntry
-     * * Rust equivalent for LIST_ENTRY
-     */
+    /// ListEntry
+    /// * Rust equivalent for LIST_ENTRY
     #[repr(C)]
     #[derive(Debug, Copy, Clone)]
     pub struct ListEntry {
@@ -74,9 +72,8 @@ pub mod driver {
         pub blink: *mut ListEntry,
     }
 
-   /** IntermediateBufferHeaderUnion
-    * * Rust equivalent for HANDLE and LIST_ENTRY union used for INTERMEDIATE_BUFFER
-    */
+   /// IntermediateBufferHeaderUnion
+   /// * Rust equivalent for HANDLE and LIST_ENTRY union used for INTERMEDIATE_BUFFER
    #[repr(C, packed)]
    #[derive(Copy, Clone)]
    pub union IntermediateBufferHeaderUnion {
@@ -93,9 +90,8 @@ pub mod driver {
        }
    }
 
-   /** IntermediateBuffer
-    * * Rust equivalent for INTERMEDIATE_BUFFER
-    */
+   /// IntermediateBuffer
+   /// * Rust equivalent for INTERMEDIATE_BUFFER
    #[repr(C, packed)]
    #[derive(Copy, Clone, Default)]
    pub struct IntermediateBuffer {
@@ -125,9 +121,8 @@ pub mod driver {
        }
    }
 
-    /** AdapterMode
-     * * Rust equivalent for ADAPTER_MODE
-     */
+    /// AdapterMode
+    /// * Rust equivalent for ADAPTER_MODE
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct AdapterMode {
@@ -135,18 +130,16 @@ pub mod driver {
         pub flags: u32,
     }
 
-    /** EthPacket
-     * * Rust equivalent for NDISRD_ETH_Packet
-     */
+    /// EthPacket
+    /// * Rust equivalent for NDISRD_ETH_Packet
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthPacket {
         pub buffer: *mut IntermediateBuffer,
     }
 
-    /** EthRequest
-     * * Rust equivalent for ETH_REQUEST
-     */
+    /// EthRequest
+    /// * Rust equivalent for ETH_REQUEST
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthRequest {
@@ -154,9 +147,8 @@ pub mod driver {
         pub packet: EthPacket,
     }
 
-    /** EthMRequest
-     * * Rust equivalent for ETH_M_REQUEST using const generics
-     */
+    /// EthMRequest
+    /// * Rust equivalent for ETH_M_REQUEST using const generics
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct EthMRequest<const N: usize> {
@@ -166,9 +158,8 @@ pub mod driver {
         pub packets: [EthPacket; N],
     }
 
-    /** AdapterEvent
-     * * Rust equivalent for ADAPTER_EVENT
-     */
+    /// AdapterEvent
+    /// * Rust equivalent for ADAPTER_EVENT
     #[repr(C, packed)]
     #[derive(Debug, Copy, Clone)]
     pub struct AdapterEvent {

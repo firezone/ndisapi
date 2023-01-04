@@ -13,7 +13,7 @@ use windows::{
     Win32::System::IO::DeviceIoControl,
 };
 
-use crate::driver::*;
+pub(crate) use crate::driver::*;
 
 pub struct Ndisapi {
     driver_handle: HANDLE,
@@ -57,11 +57,11 @@ impl Default for Ndisapi {
 
 impl Ndisapi {
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
-        let mut result = Vec::new();
         let mut adapters: MaybeUninit<driver::TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
+        let result;
 
         unsafe {
-            let io_result = DeviceIoControl(
+            result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_GET_TCPIP_INTERFACES,
                 Some(adapters.as_mut_ptr() as _),
@@ -71,31 +71,33 @@ impl Ndisapi {
                 None,
                 None,
             );
-
-            if io_result.as_bool() {
-                let adapters = adapters.assume_init();
-                let unaligned = std::ptr::addr_of!(adapters.adapter_count);
-                let list_size = std::ptr::read_unaligned(unaligned);
-                for i in 0..list_size as usize {
-                    let next = NetworkAdapterInfo::new(
-                        String::from_utf8(adapters.adapter_name_list[i].to_vec()).unwrap(),
-                        adapters.adapter_handle[i],
-                        adapters.adapter_medium_list[i],
-                        adapters.current_address[i],
-                        adapters.mtu[i],
-                    );
-                    result.push(next);
-                }
-            }
         }
 
-        Ok(result)
+        if result.as_bool() {
+            let mut result = Vec::new();
+            let adapters = unsafe { adapters.assume_init() };
+
+            for i in 0..adapters.adapter_count as usize {
+                let next = NetworkAdapterInfo::new(
+                    String::from_utf8(adapters.adapter_name_list[i].to_vec()).unwrap(),
+                    adapters.adapter_handle[i],
+                    adapters.adapter_medium_list[i],
+                    adapters.current_address[i],
+                    adapters.mtu[i],
+                );
+                result.push(next);
+            }
+            return Ok(result);
+        } else {
+            Err(unsafe { GetLastError() }.into())
+        }
     }
 
     pub fn get_version(&self) -> Result<(u32, u32, u32)> {
         let mut version = u32::MAX;
+        let result;
         unsafe {
-            let result = DeviceIoControl(
+            result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_GET_VERSION,
                 Some(&mut version as *mut c_uint as _),
@@ -105,17 +107,17 @@ impl Ndisapi {
                 None,
                 None,
             );
-
-            if !result.as_bool() {
-                return Err(GetLastError().into());
-            }
-
-            Ok((
-                (version & (0xF000)) >> 12,
-                (version & (0xFF000000)) >> 24,
-                (version & (0xFF0000)) >> 16,
-            ))
         }
+
+        if !result.as_bool() {
+            return Err(unsafe { GetLastError() }.into());
+        }
+
+        Ok((
+            (version & (0xF000)) >> 12,
+            (version & (0xFF000000)) >> 24,
+            (version & (0xFF0000)) >> 16,
+        ))
     }
 
     pub fn is_driver_loaded(&self) -> bool {
@@ -160,8 +162,10 @@ impl Ndisapi {
             packet,
         };
 
+        let result;
+
         unsafe {
-            let io_result = DeviceIoControl(
+            result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKET,
                 Some(std::mem::transmute::<
@@ -177,9 +181,9 @@ impl Ndisapi {
                 None,
                 None,
             );
-
-            io_result.as_bool()
         }
+
+        result.as_bool()
     }
 
     pub fn read_packets<

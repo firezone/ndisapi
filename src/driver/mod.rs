@@ -158,6 +158,19 @@ pub mod driver {
         pub packets: [EthPacket; N],
     }
 
+    impl<const N: usize> EthMRequest<N> {
+        pub fn new(adapter_handle: HANDLE) -> Self {
+            Self {
+                adapter_handle,
+                packet_number: 0,
+                packet_success: 0,
+                packets: [EthPacket {
+                    buffer: core::ptr::null_mut(),
+                }; N],
+            }
+        }
+    }
+
     /// AdapterEvent
     /// * Rust equivalent for ADAPTER_EVENT
     #[repr(C, packed)]

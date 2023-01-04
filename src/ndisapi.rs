@@ -178,21 +178,18 @@ impl Ndisapi {
         adapter_handle: HANDLE,
         mut packets: T,
     ) -> usize {
-        let mut eth_request: driver::EthMRequest<N>;
+        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+
+        for i in 0..N {
+            if let Some(packet) = packets.next() {
+                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packet_number += 1;
+            } else {
+                break;
+            }
+        }
 
         unsafe {
-            eth_request = MaybeUninit::zeroed().assume_init();
-            eth_request.adapter_handle = adapter_handle;
-
-            for i in 0..N {
-                if let Some(packet) = packets.next() {
-                    eth_request.packets[i].buffer = packet.as_mut();
-                    eth_request.packet_number += 1;
-                } else {
-                    break;
-                }
-            }
-
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKETS,
@@ -280,21 +277,18 @@ impl Ndisapi {
         adapter_handle: HANDLE,
         mut packets: T,
     ) -> bool {
-        let mut eth_request: driver::EthMRequest<N>;
+        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+
+        for i in 0..N {
+            if let Some(packet) = packets.next() {
+                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packet_number += 1;
+            } else {
+                break;
+            }
+        }
 
         unsafe {
-            eth_request = MaybeUninit::zeroed().assume_init();
-            eth_request.adapter_handle = adapter_handle;
-
-            for i in 0..N {
-                if let Some(packet) = packets.next() {
-                    eth_request.packets[i].buffer = packet.as_mut();
-                    eth_request.packet_number += 1;
-                } else {
-                    break;
-                }
-            }
-
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
@@ -319,21 +313,18 @@ impl Ndisapi {
         adapter_handle: HANDLE,
         mut packets: T,
     ) -> bool {
-        let mut eth_request: driver::EthMRequest<N>;
+        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+
+        for i in 0..N {
+            if let Some(packet) = packets.next() {
+                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packet_number += 1;
+            } else {
+                break;
+            }
+        }
 
         unsafe {
-            eth_request = MaybeUninit::zeroed().assume_init();
-            eth_request.adapter_handle = adapter_handle;
-
-            for i in 0..N {
-                if let Some(packet) = packets.next() {
-                    eth_request.packets[i].buffer = packet.as_mut();
-                    eth_request.packet_number += 1;
-                } else {
-                    break;
-                }
-            }
-
             let io_result = DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,

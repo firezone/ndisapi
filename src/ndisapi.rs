@@ -5,7 +5,7 @@ use std::{
 
 use windows::{
     core::Result,
-    Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE},
+    Win32::Foundation::{CloseHandle, GetLastError, HANDLE},
     Win32::Storage::FileSystem::{
         CreateFileW, FILE_ACCESS_FLAGS, FILE_FLAG_OVERLAPPED, FILE_SHARE_READ, FILE_SHARE_WRITE,
         OPEN_EXISTING,
@@ -46,12 +46,6 @@ impl Drop for Ndisapi {
                 CloseHandle(self.driver_handle);
             }
         }
-    }
-}
-
-impl Default for Ndisapi {
-    fn default() -> Self {
-        Self::new(driver::NDISRD_DRIVER_NAME)
     }
 }
 
@@ -120,20 +114,12 @@ impl Ndisapi {
         ))
     }
 
-    pub fn is_driver_loaded(&self) -> bool {
-        self.driver_handle != INVALID_HANDLE_VALUE
-    }
-
-    pub fn new<P>(filename: P) -> Self
+    pub fn new<P>(filename: P) -> Result<Self>
     where
         P: ::std::convert::Into<::windows::core::PCWSTR>,
     {
-        let mut ndisapi = Ndisapi {
-            driver_handle: INVALID_HANDLE_VALUE,
-        };
-
-        unsafe {
-            if let Ok(handle) = CreateFileW(
+        if let Ok(handle) = unsafe {
+            CreateFileW(
                 filename,
                 FILE_ACCESS_FLAGS(0u32),
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -141,11 +127,14 @@ impl Ndisapi {
                 OPEN_EXISTING,
                 FILE_FLAG_OVERLAPPED,
                 None,
-            ) {
-                ndisapi.driver_handle = handle
-            }
+            )
+        } {
+            Ok(Self {
+                driver_handle: handle,
+            })
+        } else {
+            Err(unsafe { GetLastError() }.into())
         }
-        ndisapi
     }
 
     pub fn read_packet(

@@ -1,6 +1,4 @@
 pub mod driver {
-    use std::mem::MaybeUninit;
-
     use windows::{core::*, Win32::Foundation::*};
 
     pub const NDISRD_DRIVER_NAME: ::windows::core::PCWSTR = w!("\\\\.\\NDISRD");

@@ -76,43 +76,56 @@ pub mod driver {
         pub blink: *mut ListEntry,
     }
 
-    /** IntermediateBufferHeaderUnion
-     * * Rust equivalent for HANDLE and LIST_ENTRY union used for INTERMEDIATE_BUFFER
-     */
-    #[repr(C, packed)]
-    #[derive(Copy, Clone)]
-    pub union IntermediateBufferHeaderUnion {
-        pub adapter_handle: HANDLE,
-        pub list_entry: ListEntry,
-    }
+   /** IntermediateBufferHeaderUnion
+    * * Rust equivalent for HANDLE and LIST_ENTRY union used for INTERMEDIATE_BUFFER
+    */
+   #[repr(C, packed)]
+   #[derive(Copy, Clone)]
+   pub union IntermediateBufferHeaderUnion {
+       pub adapter_handle: HANDLE,
+       pub list_entry: ListEntry,
+   }
 
-    /** IntermediateBuffer
-     * * Rust equivalent for INTERMEDIATE_BUFFER
-     */
-    #[repr(C, packed)]
-    #[derive(Copy, Clone)]
-    pub struct IntermediateBuffer {
-        pub header: IntermediateBufferHeaderUnion,
-        pub device_flags: u32,
-        pub length: u32,
-        pub flags: u32,
-        pub vlan_8021q: u32,
-        pub filter_id: u32,
-        pub reserved: [u32; 4usize],
-        pub buffer: [u8; 1514usize],
-    }
+   impl Default for IntermediateBufferHeaderUnion {
+       fn default() -> Self {
+           // SAFETY: This union contains either a `HANDLE` or a `ListEntry`
+           // ListEntry: is an union of raw pointers which can be safely zeroed(as long as you not dereference it)
+           // HANDLE: is just an `isize` wrapper which can also be zeroed
+           unsafe { core::mem::zeroed() }
+       }
+   }
 
-    impl IntermediateBuffer {
-        pub fn new() -> Self {
-            unsafe { MaybeUninit::zeroed().assume_init() }
-        }
-    }
+   /** IntermediateBuffer
+    * * Rust equivalent for INTERMEDIATE_BUFFER
+    */
+   #[repr(C, packed)]
+   #[derive(Copy, Clone, Default)]
+   pub struct IntermediateBuffer {
+       pub header: IntermediateBufferHeaderUnion,
+       pub device_flags: u32,
+       pub length: u32,
+       pub flags: u32,
+       pub vlan_8021q: u32,
+       pub filter_id: u32,
+       pub reserved: [u32; 4usize],
+       pub buffer: Buffer,
+   }
 
-    impl Default for IntermediateBuffer {
-        fn default() -> Self {
-            Self::new()
-        }
-    }
+   #[repr(transparent)]
+   #[derive(Copy, Clone)]
+   pub struct Buffer(pub [u8; 1514]);
+
+   impl Default for Buffer {
+       fn default() -> Self {
+           Self([0; 1514])
+       }
+   }
+
+   impl IntermediateBuffer {
+       pub fn new() -> Self {
+           Self::default()
+       }
+   }
 
     /** AdapterMode
      * * Rust equivalent for ADAPTER_MODE

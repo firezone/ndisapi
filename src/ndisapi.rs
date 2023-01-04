@@ -65,7 +65,6 @@ impl Ndisapi {
                 let adapters = adapters.assume_init();
                 let unaligned = std::ptr::addr_of!(adapters.adapter_count);
                 let list_size = std::ptr::read_unaligned(unaligned);
-                println!("Number of adapters: {}", list_size);
                 for i in 0..list_size as usize {
                     let next = NetworkAdapterInfo::new(
                         String::from_utf8(adapters.adapter_name_list[i].to_vec()).unwrap(),

@@ -94,14 +94,14 @@ fn main() -> Result<()> {
             // Decrement packets counter
             packets_num = packets_num.saturating_sub(packets_read);
 
-            for _ in 0..packets_read {
+            for i in 0..packets_read {
                 let eth_packet = to_read.pop_front().unwrap();
                 let packet = eth_packet.get_buffer();
                 // Print packet information
                 if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
-                    println!("\n{} - MSTCP --> Interface\n", packets_num);
+                    println!("\n{} - MSTCP --> Interface\n", packets_num + (packets_read - i));
                 } else {
-                    println!("\n{} - Interface --> MSTCP\n", packets_num);
+                    println!("\n{} - Interface --> MSTCP\n", packets_num + (packets_read - i));
                 }
 
                 // Print some informations about the sliced packet

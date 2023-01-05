@@ -138,6 +138,12 @@ pub mod driver {
         pub buffer: *mut IntermediateBuffer,
     }
 
+    impl EthPacket {
+        pub fn get_buffer(&self) -> &mut IntermediateBuffer {
+            unsafe { &mut *self.buffer }
+        }
+    }
+
     /// EthRequest
     /// * Rust equivalent for ETH_REQUEST
     #[repr(C, packed)]

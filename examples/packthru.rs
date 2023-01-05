@@ -98,7 +98,7 @@ fn main() -> Result<()> {
 
             for _ in 0..packets_read {
                 let eth_packet = to_read.pop_front().unwrap();
-                let packet = unsafe { &mut *eth_packet.buffer };
+                let packet = eth_packet.get_buffer();
                 // Print packet information
                 if packet.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
                     println!("\n{} - MSTCP --> Interface\n", packets_num);

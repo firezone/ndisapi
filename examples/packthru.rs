@@ -6,8 +6,7 @@ use windows::{
 
 use std::{collections::VecDeque, env};
 
-use ndisapi::driver::driver::NDISRD_DRIVER_NAME;
-use ndisapi::ndisapi::*;
+use ndisapi;
 
 use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
 
@@ -22,7 +21,7 @@ fn main() -> Result<()> {
         .parse::<usize>()
         .expect("Failed to parse number of packet to filter");
 
-    let result = Ndisapi::new(NDISRD_DRIVER_NAME);
+    let result = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME);
 
     let driver = match result {
         Ok(ndisapi) => ndisapi,
@@ -62,22 +61,21 @@ fn main() -> Result<()> {
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
         adapters[interface_idx].handle,
-        ndisapi::driver::driver::MSTCP_FLAG_SENT_TUNNEL
-            | ndisapi::driver::driver::MSTCP_FLAG_RECV_TUNNEL,
+        ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
     // Container to store IntermediateBuffers allocated on the heap
-    let mut ib: Vec<Box<ndisapi::driver::driver::IntermediateBuffer>> = Vec::with_capacity(256);
+    let mut ib: Vec<Box<ndisapi::IntermediateBuffer>> = Vec::with_capacity(256);
 
     // Containers to read/write IntermediateBuffers from/to the driver
-    let mut to_read: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
-    let mut to_mstcp: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
-    let mut to_adapter: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
+    let mut to_read: VecDeque<ndisapi::EthPacket> = VecDeque::new();
+    let mut to_mstcp: VecDeque<ndisapi::EthPacket> = VecDeque::new();
+    let mut to_adapter: VecDeque<ndisapi::EthPacket> = VecDeque::new();
 
     // Allocate 256 IntermediateBuffers and initialize the read dequeue
     for _i in 0..256 {
-        let mut packet = Box::new(ndisapi::driver::driver::IntermediateBuffer::default());
-        to_read.push_back(ndisapi::ndisapi::driver::EthPacket {
+        let mut packet = Box::new(ndisapi::IntermediateBuffer::default());
+        to_read.push_back(ndisapi::EthPacket {
             buffer: packet.as_mut(),
         });
         ib.push(packet);
@@ -100,7 +98,7 @@ fn main() -> Result<()> {
                 let eth_packet = to_read.pop_front().unwrap();
                 let packet = eth_packet.get_buffer();
                 // Print packet information
-                if packet.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
+                if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                     println!("\n{} - MSTCP --> Interface\n", packets_num);
                 } else {
                     println!("\n{} - Interface --> MSTCP\n", packets_num);
@@ -174,7 +172,7 @@ fn main() -> Result<()> {
                     }
                 }
 
-                if packet.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
+                if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                     to_adapter.push_back(eth_packet);
                 } else {
                     to_mstcp.push_back(eth_packet);

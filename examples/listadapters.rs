@@ -1,9 +1,8 @@
-use ndisapi::driver::driver::NDISRD_DRIVER_NAME;
-use ndisapi::ndisapi::*;
+use ndisapi;
 use windows::core::Result;
 
 fn main() -> Result<()> {
-    let result = Ndisapi::new(NDISRD_DRIVER_NAME);
+    let result = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME);
 
     let driver = match result {
         Ok(ndisapi) => ndisapi,

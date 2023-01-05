@@ -6,8 +6,7 @@ use windows::{
 
 use std::env;
 
-use ndisapi::driver::driver::NDISRD_DRIVER_NAME;
-use ndisapi::ndisapi::*;
+use ndisapi;
 
 use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
 
@@ -22,7 +21,7 @@ fn main() -> Result<()> {
         .parse::<usize>()
         .expect("Failed to parse number of packet to filter");
 
-    let result = Ndisapi::new(NDISRD_DRIVER_NAME);
+    let result = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME);
 
     let driver = match result {
         Ok(ndisapi) => ndisapi,
@@ -62,16 +61,15 @@ fn main() -> Result<()> {
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
         adapters[interface_idx].handle,
-        ndisapi::driver::driver::MSTCP_FLAG_SENT_TUNNEL
-            | ndisapi::driver::driver::MSTCP_FLAG_RECV_TUNNEL,
+        ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
     // Allocate single IntermediateBuffer on the stack
-    let mut ib = ndisapi::driver::driver::IntermediateBuffer::default();
+    let mut ib = ndisapi::IntermediateBuffer::default();
 
     // Initialize EthPacket to pass to driver API
-    let mut eth_packet = ndisapi::driver::driver::EthPacket {
-        buffer: &mut ib as *mut ndisapi::driver::driver::IntermediateBuffer,
+    let mut eth_packet = ndisapi::EthPacket {
+        buffer: &mut ib as *mut ndisapi::IntermediateBuffer,
     };
 
     while packets_num > 0 {
@@ -83,7 +81,7 @@ fn main() -> Result<()> {
             packets_num -= 1;
 
             // Print packet information
-            if ib.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
+            if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                 println!("\n{} - MSTCP --> Interface\n", packets_num);
             } else {
                 println!("\n{} - Interface --> MSTCP\n", packets_num);
@@ -158,7 +156,7 @@ fn main() -> Result<()> {
             }
 
             // Re-inject the packet back into the network stack
-            if ib.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
+            if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                 driver.send_packet_to_adapter(adapters[interface_idx].handle, &mut eth_packet);
             } else {
                 driver.send_packet_to_mstcp(adapters[interface_idx].handle, &mut eth_packet);

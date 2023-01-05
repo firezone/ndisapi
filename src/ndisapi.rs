@@ -13,7 +13,7 @@ use windows::{
     Win32::System::IO::DeviceIoControl,
 };
 
-pub(crate) use crate::driver::*;
+pub use crate::driver::*;
 
 pub struct Ndisapi {
     driver_handle: HANDLE,
@@ -137,18 +137,10 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packet(
-        &self,
-        adapter_handle: HANDLE,
-        packet: &mut Box<driver::IntermediateBuffer>,
-    ) -> bool {
-        let packet = driver::EthPacket {
-            buffer: packet.as_mut(),
-        };
-
+    pub fn read_packet(&self, adapter_handle: HANDLE, packet: &mut driver::EthPacket) -> bool {
         let eth_request = driver::EthRequest {
             adapter_handle,
-            packet,
+            packet: *packet,
         };
 
         let result;
@@ -169,11 +161,7 @@ impl Ndisapi {
         result.as_bool()
     }
 
-    pub fn read_packets<
-        'a,
-        T: Iterator<Item = &'a mut Box<driver::IntermediateBuffer>>,
-        const N: usize,
-    >(
+    pub fn read_packets<'a, T: Iterator<Item = &'a mut driver::EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
         mut packets: T,
@@ -182,7 +170,7 @@ impl Ndisapi {
 
         for i in 0..N {
             if let Some(packet) = packets.next() {
-                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packets[i] = *packet;
                 eth_request.packet_number += 1;
             } else {
                 break;
@@ -211,15 +199,11 @@ impl Ndisapi {
     pub fn send_packet_to_adapter(
         &self,
         adapter_handle: HANDLE,
-        packet: &mut Box<driver::IntermediateBuffer>,
+        packet: &mut driver::EthPacket,
     ) -> bool {
-        let packet = driver::EthPacket {
-            buffer: packet.as_mut(),
-        };
-
         let eth_request = driver::EthRequest {
             adapter_handle,
-            packet,
+            packet: *packet,
         };
 
         unsafe {
@@ -241,15 +225,11 @@ impl Ndisapi {
     pub fn send_packet_to_mstcp(
         &self,
         adapter_handle: HANDLE,
-        packet: &mut Box<driver::IntermediateBuffer>,
+        packet: &mut driver::EthPacket,
     ) -> bool {
-        let packet = driver::EthPacket {
-            buffer: packet.as_mut(),
-        };
-
         let eth_request = driver::EthRequest {
             adapter_handle,
-            packet,
+            packet: *packet,
         };
 
         unsafe {
@@ -270,7 +250,7 @@ impl Ndisapi {
 
     pub fn send_packets_to_mstcp<
         'a,
-        T: Iterator<Item = &'a mut Box<driver::IntermediateBuffer>>,
+        T: Iterator<Item = &'a mut driver::EthPacket>,
         const N: usize,
     >(
         &self,
@@ -281,7 +261,7 @@ impl Ndisapi {
 
         for i in 0..N {
             if let Some(packet) = packets.next() {
-                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packets[i] = *packet;
                 eth_request.packet_number += 1;
             } else {
                 break;
@@ -306,7 +286,7 @@ impl Ndisapi {
 
     pub fn send_packets_to_adapter<
         'a,
-        T: Iterator<Item = &'a mut Box<driver::IntermediateBuffer>>,
+        T: Iterator<Item = &'a mut driver::EthPacket>,
         const N: usize,
     >(
         &self,
@@ -317,7 +297,7 @@ impl Ndisapi {
 
         for i in 0..N {
             if let Some(packet) = packets.next() {
-                eth_request.packets[i].buffer = packet.as_mut();
+                eth_request.packets[i] = *packet;
                 eth_request.packet_number += 1;
             } else {
                 break;

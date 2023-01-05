@@ -38,11 +38,17 @@ fn main() -> Result<()> {
         "Detected Windows Packet Filter version {}.{}.{}",
         major_version, minor_version, revision
     );
+
     let adapters = driver.get_tcpip_bound_adapters_info()?;
 
     if interface_idx + 1 > adapters.len() {
         panic!("Interface index is beoynd the number of available interfaces");
     }
+
+    println!(
+        "Using interface {} with {} packets",
+        adapters[interface_idx].name, packets_num
+    );
 
     // Create Win32 event
     let event: HANDLE;
@@ -60,13 +66,19 @@ fn main() -> Result<()> {
             | ndisapi::driver::driver::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
-    let mut ib = Box::new(ndisapi::driver::driver::IntermediateBuffer::default());
+    // Allocate single IntermediateBuffer on the stack
+    let mut ib = ndisapi::driver::driver::IntermediateBuffer::default();
+
+    // Initialize EthPacket to pass to driver API
+    let mut eth_packet = ndisapi::driver::driver::EthPacket {
+        buffer: &mut ib as *mut ndisapi::driver::driver::IntermediateBuffer,
+    };
 
     while packets_num > 0 {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while driver.read_packet(adapters[interface_idx].handle, &mut ib) {
+        while driver.read_packet(adapters[interface_idx].handle, &mut eth_packet) {
             // Decrement packets counter
             packets_num -= 1;
 
@@ -147,9 +159,9 @@ fn main() -> Result<()> {
 
             // Re-inject the packet back into the network stack
             if ib.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
-                driver.send_packet_to_adapter(adapters[interface_idx].handle, &mut ib);
+                driver.send_packet_to_adapter(adapters[interface_idx].handle, &mut eth_packet);
             } else {
-                driver.send_packet_to_mstcp(adapters[interface_idx].handle, &mut ib);
+                driver.send_packet_to_mstcp(adapters[interface_idx].handle, &mut eth_packet);
             }
 
             if packets_num == 0 {

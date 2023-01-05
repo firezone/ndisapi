@@ -38,11 +38,17 @@ fn main() -> Result<()> {
         "Detected Windows Packet Filter version {}.{}.{}",
         major_version, minor_version, revision
     );
+
     let adapters = driver.get_tcpip_bound_adapters_info()?;
 
     if interface_idx + 1 > adapters.len() {
         panic!("Interface index is beoynd the number of available interfaces");
     }
+
+    println!(
+        "Using interface {} with {} packets",
+        adapters[interface_idx].name, packets_num
+    );
 
     // Create Win32 event
     let event: HANDLE;
@@ -60,14 +66,21 @@ fn main() -> Result<()> {
             | ndisapi::driver::driver::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
-    let mut ib: VecDeque<Box<ndisapi::driver::driver::IntermediateBuffer>> = VecDeque::new();
-    let mut to_mstcp: VecDeque<Box<ndisapi::driver::driver::IntermediateBuffer>> = VecDeque::new();
-    let mut to_adapter: VecDeque<Box<ndisapi::driver::driver::IntermediateBuffer>> =
-        VecDeque::new();
+    // Container to store IntermediateBuffers allocated on the heap
+    let mut ib: Vec<Box<ndisapi::driver::driver::IntermediateBuffer>> = Vec::with_capacity(256);
+
+    // Containers to read/write IntermediateBuffers from/to the driver
+    let mut to_read: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
+    let mut to_mstcp: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
+    let mut to_adapter: VecDeque<ndisapi::ndisapi::driver::EthPacket> = VecDeque::new();
+
+    // Allocate 256 IntermediateBuffers and initialize the read dequeue
     for _i in 0..256 {
-        ib.push_back(Box::new(
-            ndisapi::driver::driver::IntermediateBuffer::default(),
-        ));
+        let mut packet = Box::new(ndisapi::driver::driver::IntermediateBuffer::default());
+        to_read.push_back(ndisapi::ndisapi::driver::EthPacket {
+            buffer: packet.as_mut(),
+        });
+        ib.push(packet);
     }
 
     let mut packets_read: usize;
@@ -77,14 +90,15 @@ fn main() -> Result<()> {
         }
         while {
             packets_read =
-                driver.read_packets::<_, 256>(adapters[interface_idx].handle, ib.iter_mut());
+                driver.read_packets::<_, 256>(adapters[interface_idx].handle, to_read.iter_mut());
             packets_read > 0
         } {
             // Decrement packets counter
             packets_num = packets_num.saturating_sub(packets_read);
 
             for _ in 0..packets_read {
-                let packet = ib.pop_front().unwrap();
+                let eth_packet = to_read.pop_front().unwrap();
+                let packet = unsafe { &mut *eth_packet.buffer };
                 // Print packet information
                 if packet.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
                     println!("\n{} - MSTCP --> Interface\n", packets_num);
@@ -151,8 +165,6 @@ fn main() -> Result<()> {
                                     value.source_port(),
                                     value.destination_port()
                                 );
-                                // let options: Vec<Result<TcpOptionElement, TcpOptionReadError>> = value.options_iterator().collect();
-                                // println!("    {:?}", options);
                             }
                             Some(Unknown(ip_protocol)) => {
                                 println!("  Unknwon Protocol (ip protocol number {:?}", ip_protocol)
@@ -163,9 +175,9 @@ fn main() -> Result<()> {
                 }
 
                 if packet.device_flags == ndisapi::driver::driver::PACKET_FLAG_ON_SEND {
-                    to_adapter.push_back(packet);
+                    to_adapter.push_back(eth_packet);
                 } else {
-                    to_mstcp.push_back(packet);
+                    to_mstcp.push_back(eth_packet);
                 }
             }
 
@@ -175,7 +187,7 @@ fn main() -> Result<()> {
                     adapters[interface_idx].handle,
                     to_adapter.iter_mut(),
                 );
-                ib.append(&mut to_adapter);
+                to_read.append(&mut to_adapter);
             }
 
             if to_mstcp.is_empty() == false {
@@ -183,7 +195,7 @@ fn main() -> Result<()> {
                     adapters[interface_idx].handle,
                     to_mstcp.iter_mut(),
                 );
-                ib.append(&mut to_mstcp);
+                to_read.append(&mut to_mstcp);
             }
 
             if packets_num == 0 {

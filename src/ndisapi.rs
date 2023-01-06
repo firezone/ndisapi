@@ -333,13 +333,9 @@ impl Ndisapi {
     ) -> Result<()> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
-        for i in 0..N {
-            if let Some(packet) = packets.next() {
-                eth_request.packets[i] = *packet;
-                eth_request.packet_number += 1;
-            } else {
-                break;
-            }
+        for (i, packet) in packets.enumerate() {
+            eth_request.packets[i] = *packet;
+            eth_request.packet_number += 1;
         }
 
         let result = unsafe {

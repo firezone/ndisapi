@@ -46,7 +46,8 @@ fn main() -> Result<()> {
 
     println!(
         "Using interface {} with {} packets",
-        adapters[interface_idx].get_name(), packets_num
+        adapters[interface_idx].get_name(),
+        packets_num
     );
 
     // Create Win32 event
@@ -81,14 +82,20 @@ fn main() -> Result<()> {
         ib.push(packet);
     }
 
-    let mut packets_read: usize;
     while packets_num > 0 {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
+
+        let mut packets_read: usize;
+
         while {
-            packets_read =
-                driver.read_packets::<_, 256>(adapters[interface_idx].get_handle(), to_read.iter_mut());
+            packets_read = match driver
+                .read_packets::<_, 256>(adapters[interface_idx].get_handle(), to_read.iter_mut())
+            {
+                Ok(p) => p,
+                Err(_) => 0usize,
+            };
             packets_read > 0
         } {
             // Decrement packets counter
@@ -99,9 +106,15 @@ fn main() -> Result<()> {
                 let packet = eth_packet.get_buffer();
                 // Print packet information
                 if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
-                    println!("\n{} - MSTCP --> Interface\n", packets_num + (packets_read - i));
+                    println!(
+                        "\n{} - MSTCP --> Interface\n",
+                        packets_num + (packets_read - i)
+                    );
                 } else {
-                    println!("\n{} - Interface --> MSTCP\n", packets_num + (packets_read - i));
+                    println!(
+                        "\n{} - Interface --> MSTCP\n",
+                        packets_num + (packets_read - i)
+                    );
                 }
 
                 // Print some informations about the sliced packet
@@ -181,18 +194,24 @@ fn main() -> Result<()> {
 
             // Re-inject packets back into the network stack
             if to_adapter.is_empty() == false {
-                driver.send_packets_to_adapter::<_, 256>(
+                match driver.send_packets_to_adapter::<_, 256>(
                     adapters[interface_idx].get_handle(),
                     to_adapter.iter_mut(),
-                );
+                ) {
+                    Ok(_) => {}
+                    Err(err) => println!("Error sending packet to adapter. Error code = {err}"),
+                }
                 to_read.append(&mut to_adapter);
             }
 
             if to_mstcp.is_empty() == false {
-                driver.send_packets_to_mstcp::<_, 256>(
+                match driver.send_packets_to_mstcp::<_, 256>(
                     adapters[interface_idx].get_handle(),
                     to_mstcp.iter_mut(),
-                );
+                ) {
+                    Ok(_) => {}
+                    Err(err) => println!("Error sending packet to mstcp. Error code = {err}"),
+                };
                 to_read.append(&mut to_mstcp);
             }
 

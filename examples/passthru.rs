@@ -46,7 +46,8 @@ fn main() -> Result<()> {
 
     println!(
         "Using interface {} with {} packets",
-        adapters[interface_idx].get_name(), packets_num
+        adapters[interface_idx].get_name(),
+        packets_num
     );
 
     // Create Win32 event
@@ -76,16 +77,20 @@ fn main() -> Result<()> {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while driver.read_packet(adapters[interface_idx].get_handle(), &mut eth_packet) {
-            // Decrement packets counter
-            packets_num -= 1;
-
+        while !driver
+            .read_packet(adapters[interface_idx].get_handle(), &mut eth_packet)
+            .ok()
+            .is_none()
+        {
             // Print packet information
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                 println!("\n{} - MSTCP --> Interface\n", packets_num);
             } else {
                 println!("\n{} - Interface --> MSTCP\n", packets_num);
             }
+
+            // Decrement packets counter
+            packets_num -= 1;
 
             // Print some informations about the sliced packet
             match SlicedPacket::from_ethernet(&ib.buffer.0) {
@@ -157,9 +162,19 @@ fn main() -> Result<()> {
 
             // Re-inject the packet back into the network stack
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
-                driver.send_packet_to_adapter(adapters[interface_idx].get_handle(), &mut eth_packet);
+                match driver
+                    .send_packet_to_adapter(adapters[interface_idx].get_handle(), &mut eth_packet)
+                {
+                    Ok(_) => {}
+                    Err(err) => println!("Error sending packet to adapter. Error code = {err}"),
+                };
             } else {
-                driver.send_packet_to_mstcp(adapters[interface_idx].get_handle(), &mut eth_packet);
+                match driver
+                    .send_packet_to_mstcp(adapters[interface_idx].get_handle(), &mut eth_packet)
+                {
+                    Ok(_) => {}
+                    Err(err) => println!("Error sending packet to mstcp. Error code = {err}"),
+                }
             }
 
             if packets_num == 0 {

@@ -50,8 +50,7 @@ impl NetworkAdapterInfo {
         self.medium
     }
 
-    pub fn get_hw_address(&self) -> &[u8; 6]
-    {
+    pub fn get_hw_address(&self) -> &[u8; 6] {
         &self.hw_address
     }
 
@@ -73,10 +72,9 @@ impl Drop for Ndisapi {
 impl Ndisapi {
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
         let mut adapters: MaybeUninit<driver::TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
-        let result;
 
-        unsafe {
-            result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_GET_TCPIP_INTERFACES,
                 Some(adapters.as_mut_ptr() as _),
@@ -85,8 +83,8 @@ impl Ndisapi {
                 size_of::<driver::TcpAdapterList>() as u32,
                 None,
                 None,
-            );
-        }
+            )
+        };
 
         if result.as_bool() {
             let mut result = Vec::new();
@@ -102,7 +100,7 @@ impl Ndisapi {
                 );
                 result.push(next);
             }
-            return Ok(result);
+            Ok(result)
         } else {
             Err(unsafe { GetLastError() }.into())
         }
@@ -110,9 +108,9 @@ impl Ndisapi {
 
     pub fn get_version(&self) -> Result<(u32, u32, u32)> {
         let mut version = u32::MAX;
-        let result;
-        unsafe {
-            result = DeviceIoControl(
+
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_GET_VERSION,
                 Some(&mut version as *mut c_uint as _),
@@ -121,18 +119,18 @@ impl Ndisapi {
                 size_of::<u32>() as u32,
                 None,
                 None,
-            );
-        }
+            )
+        };
 
         if !result.as_bool() {
-            return Err(unsafe { GetLastError() }.into());
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok((
+                (version & (0xF000)) >> 12,
+                (version & (0xFF000000)) >> 24,
+                (version & (0xFF0000)) >> 16,
+            ))
         }
-
-        Ok((
-            (version & (0xF000)) >> 12,
-            (version & (0xFF000000)) >> 24,
-            (version & (0xFF0000)) >> 16,
-        ))
     }
 
     pub fn new<P>(filename: P) -> Result<Self>
@@ -158,16 +156,18 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packet(&self, adapter_handle: HANDLE, packet: &mut driver::EthPacket) -> bool {
+    pub fn read_packet(
+        &self,
+        adapter_handle: HANDLE,
+        packet: &mut driver::EthPacket,
+    ) -> Result<()> {
         let eth_request = driver::EthRequest {
             adapter_handle,
             packet: *packet,
         };
 
-        let result;
-
-        unsafe {
-            result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKET,
                 Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
@@ -176,17 +176,21 @@ impl Ndisapi {
                 size_of::<driver::EthRequest>() as u32,
                 None,
                 None,
-            );
-        }
+            )
+        };
 
-        result.as_bool()
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
     }
 
     pub fn read_packets<'a, T: Iterator<Item = &'a mut driver::EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
         mut packets: T,
-    ) -> usize {
+    ) -> Result<usize> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
         for i in 0..N {
@@ -198,8 +202,8 @@ impl Ndisapi {
             }
         }
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_READ_PACKETS,
                 Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
@@ -208,27 +212,28 @@ impl Ndisapi {
                 size_of::<driver::EthMRequest<N>>() as u32,
                 None,
                 None,
-            );
+            )
+        };
 
-            if io_result.as_bool() {
-                return eth_request.packet_success as usize;
-            }
+        if result.as_bool() {
+            Ok(eth_request.packet_success as usize)
+        } else {
+            Err(unsafe { GetLastError() }.into())
         }
-        0
     }
 
     pub fn send_packet_to_adapter(
         &self,
         adapter_handle: HANDLE,
         packet: &mut driver::EthPacket,
-    ) -> bool {
+    ) -> Result<()> {
         let eth_request = driver::EthRequest {
             adapter_handle,
             packet: *packet,
         };
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER,
                 Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
@@ -237,9 +242,13 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            io_result.as_bool()
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -247,14 +256,14 @@ impl Ndisapi {
         &self,
         adapter_handle: HANDLE,
         packet: &mut driver::EthPacket,
-    ) -> bool {
+    ) -> Result<()> {
         let eth_request = driver::EthRequest {
             adapter_handle,
             packet: *packet,
         };
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKET_TO_MSTCP,
                 Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
@@ -263,9 +272,13 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            io_result.as_bool()
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -277,7 +290,7 @@ impl Ndisapi {
         &self,
         adapter_handle: HANDLE,
         mut packets: T,
-    ) -> bool {
+    ) -> Result<()> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
         for i in 0..N {
@@ -289,8 +302,8 @@ impl Ndisapi {
             }
         }
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
                 Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
@@ -299,9 +312,13 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            io_result.as_bool()
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -313,7 +330,7 @@ impl Ndisapi {
         &self,
         adapter_handle: HANDLE,
         mut packets: T,
-    ) -> bool {
+    ) -> Result<()> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
         for i in 0..N {
@@ -325,8 +342,8 @@ impl Ndisapi {
             }
         }
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
                 Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
@@ -335,9 +352,13 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            io_result.as_bool()
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -347,8 +368,8 @@ impl Ndisapi {
             flags,
         };
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SET_ADAPTER_MODE,
                 Some(&adapter_mode as *const driver::AdapterMode as *const std::ffi::c_void),
@@ -357,12 +378,12 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            if !io_result.as_bool() {
-                return Err(GetLastError().into());
-            }
-
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
             Ok(())
         }
     }
@@ -373,8 +394,8 @@ impl Ndisapi {
             event_handle,
         };
 
-        unsafe {
-            let io_result = DeviceIoControl(
+        let result = unsafe {
+            DeviceIoControl(
                 self.driver_handle,
                 driver::IOCTL_NDISRD_SET_EVENT,
                 Some(&adapter_event as *const driver::AdapterEvent as *const std::ffi::c_void),
@@ -383,12 +404,12 @@ impl Ndisapi {
                 0,
                 None,
                 None,
-            );
+            )
+        };
 
-            if !io_result.as_bool() {
-                return Err(GetLastError().into());
-            }
-
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
             Ok(())
         }
     }

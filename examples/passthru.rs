@@ -46,7 +46,7 @@ fn main() -> Result<()> {
 
     println!(
         "Using interface {} with {} packets",
-        adapters[interface_idx].name, packets_num
+        adapters[interface_idx].get_name(), packets_num
     );
 
     // Create Win32 event
@@ -56,11 +56,11 @@ fn main() -> Result<()> {
     }
 
     // Set the event within the driver
-    driver.set_packet_event(adapters[interface_idx].handle, event)?;
+    driver.set_packet_event(adapters[interface_idx].get_handle(), event)?;
 
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
-        adapters[interface_idx].handle,
+        adapters[interface_idx].get_handle(),
         ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
@@ -76,7 +76,7 @@ fn main() -> Result<()> {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while driver.read_packet(adapters[interface_idx].handle, &mut eth_packet) {
+        while driver.read_packet(adapters[interface_idx].get_handle(), &mut eth_packet) {
             // Decrement packets counter
             packets_num -= 1;
 
@@ -157,9 +157,9 @@ fn main() -> Result<()> {
 
             // Re-inject the packet back into the network stack
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
-                driver.send_packet_to_adapter(adapters[interface_idx].handle, &mut eth_packet);
+                driver.send_packet_to_adapter(adapters[interface_idx].get_handle(), &mut eth_packet);
             } else {
-                driver.send_packet_to_mstcp(adapters[interface_idx].handle, &mut eth_packet);
+                driver.send_packet_to_mstcp(adapters[interface_idx].get_handle(), &mut eth_packet);
             }
 
             if packets_num == 0 {

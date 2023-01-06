@@ -21,10 +21,10 @@ fn main() -> Result<()> {
     let adapters = driver.get_tcpip_bound_adapters_info()?;
 
     for (index, value) in adapters.iter().enumerate() {
-        println!("{}. {}", index + 1, value.name);
-        println!("\t Medium: {}", value.medium);
-        println!("\t MAC: {:?}", value.hw_address);
-        println!("\t MTU: {}", value.mtu);
+        println!("{}. {}", index + 1, value.get_name());
+        println!("\t Medium: {}", value.get_medium());
+        println!("\t MAC: {:?}", value.get_hw_address());
+        println!("\t MTU: {}", value.get_mtu());
     }
 
     Ok(())

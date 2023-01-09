@@ -1,14 +1,10 @@
+use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
+use std::env;
 use windows::{
     core::Result,
     Win32::Foundation::HANDLE,
     Win32::System::Threading::{CreateEventW, WaitForSingleObject},
 };
-
-use std::env;
-
-use ndisapi;
-
-use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +23,7 @@ fn main() -> Result<()> {
         Ok(ndisapi) => ndisapi,
         Err(err) => panic!(
             "WinpkFilter driver is not installed or failed to load! Error code: {}",
-            err.to_string()
+            err
         ),
     };
 
@@ -77,10 +73,10 @@ fn main() -> Result<()> {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while !driver
+        while driver
             .read_packet(adapters[interface_idx].get_handle(), &mut eth_packet)
             .ok()
-            .is_none()
+            .is_some()
         {
             // Print packet information
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
@@ -96,22 +92,21 @@ fn main() -> Result<()> {
             match SlicedPacket::from_ethernet(&ib.buffer.0) {
                 Err(value) => println!("Err {:?}", value),
                 Ok(value) => {
-                    match value.link {
-                    Some(Ethernet2(value)) => println!("  Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", 
-                    value.source()[0],
-                    value.source()[1],
-                    value.source()[2],
-                    value.source()[3],
-                    value.source()[4],
-                    value.source()[5],
-                    value.destination()[0],
-                    value.destination()[1],
-                    value.destination()[2],
-                    value.destination()[3],
-                    value.destination()[4],
-                    value.destination()[5]),
-                    None => {}
-                }
+                    if let Some(Ethernet2(value)) = value.link {
+                        println!(" Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                            value.source()[0],
+                            value.source()[1],
+                            value.source()[2],
+                            value.source()[3],
+                            value.source()[4],
+                            value.source()[5],
+                            value.destination()[0],
+                            value.destination()[1],
+                            value.destination()[2],
+                            value.destination()[3],
+                            value.destination()[4],
+                            value.destination()[5])
+                    }
 
                     match value.ip {
                         Some(Ipv4(value, extensions)) => {
@@ -120,7 +115,7 @@ fn main() -> Result<()> {
                                 value.source_addr(),
                                 value.destination_addr()
                             );
-                            if false == extensions.is_empty() {
+                            if !extensions.is_empty() {
                                 println!("    {:?}", extensions);
                             }
                         }
@@ -130,7 +125,7 @@ fn main() -> Result<()> {
                                 value.source_addr(),
                                 value.destination_addr()
                             );
-                            if false == extensions.is_empty() {
+                            if !extensions.is_empty() {
                                 println!("    {:?}", extensions);
                             }
                         }

@@ -1,14 +1,10 @@
+use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
+use std::{collections::VecDeque, env};
 use windows::{
     core::Result,
     Win32::Foundation::HANDLE,
     Win32::System::Threading::{CreateEventW, WaitForSingleObject},
 };
-
-use std::{collections::VecDeque, env};
-
-use ndisapi;
-
-use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +23,7 @@ fn main() -> Result<()> {
         Ok(ndisapi) => ndisapi,
         Err(err) => panic!(
             "WinpkFilter driver is not installed or failed to load! Error code: {}",
-            err.to_string()
+            err
         ),
     };
 
@@ -75,7 +71,7 @@ fn main() -> Result<()> {
 
     // Allocate 256 IntermediateBuffers and initialize the read dequeue
     for _i in 0..256 {
-        let mut packet = Box::new(ndisapi::IntermediateBuffer::default());
+        let mut packet = Box::<ndisapi::IntermediateBuffer>::default();
         to_read.push_back(ndisapi::EthPacket {
             buffer: packet.as_mut(),
         });
@@ -90,12 +86,9 @@ fn main() -> Result<()> {
         let mut packets_read: usize;
 
         while {
-            packets_read = match driver
+            packets_read = driver
                 .read_packets::<_, 256>(adapters[interface_idx].get_handle(), to_read.iter_mut())
-            {
-                Ok(p) => p,
-                Err(_) => 0usize,
-            };
+                .unwrap_or(0usize);
             packets_read > 0
         } {
             // Decrement packets counter
@@ -118,25 +111,25 @@ fn main() -> Result<()> {
                 }
 
                 // Print some informations about the sliced packet
+
                 match SlicedPacket::from_ethernet(&packet.buffer.0) {
                     Err(value) => println!("Err {:?}", value),
                     Ok(value) => {
-                        match value.link {
-                        Some(Ethernet2(value)) => println!("  Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", 
-                        value.source()[0],
-                        value.source()[1],
-                        value.source()[2],
-                        value.source()[3],
-                        value.source()[4],
-                        value.source()[5],
-                        value.destination()[0],
-                        value.destination()[1],
-                        value.destination()[2],
-                        value.destination()[3],
-                        value.destination()[4],
-                        value.destination()[5]),
-                        None => {}
-                    }
+                        if let Some(Ethernet2(value)) = value.link {
+                            println!(" Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                                value.source()[0],
+                                value.source()[1],
+                                value.source()[2],
+                                value.source()[3],
+                                value.source()[4],
+                                value.source()[5],
+                                value.destination()[0],
+                                value.destination()[1],
+                                value.destination()[2],
+                                value.destination()[3],
+                                value.destination()[4],
+                                value.destination()[5])
+                        }
 
                         match value.ip {
                             Some(Ipv4(value, extensions)) => {
@@ -145,7 +138,7 @@ fn main() -> Result<()> {
                                     value.source_addr(),
                                     value.destination_addr()
                                 );
-                                if false == extensions.is_empty() {
+                                if !extensions.is_empty() {
                                     println!("    {:?}", extensions);
                                 }
                             }
@@ -155,7 +148,7 @@ fn main() -> Result<()> {
                                     value.source_addr(),
                                     value.destination_addr()
                                 );
-                                if false == extensions.is_empty() {
+                                if !extensions.is_empty() {
                                     println!("    {:?}", extensions);
                                 }
                             }
@@ -193,7 +186,7 @@ fn main() -> Result<()> {
             }
 
             // Re-inject packets back into the network stack
-            if to_adapter.is_empty() == false {
+            if !to_adapter.is_empty() {
                 match driver.send_packets_to_adapter::<_, 256>(
                     adapters[interface_idx].get_handle(),
                     to_adapter.iter_mut(),
@@ -204,7 +197,7 @@ fn main() -> Result<()> {
                 to_read.append(&mut to_adapter);
             }
 
-            if to_mstcp.is_empty() == false {
+            if !to_mstcp.is_empty() {
                 match driver.send_packets_to_mstcp::<_, 256>(
                     adapters[interface_idx].get_handle(),
                     to_mstcp.iter_mut(),

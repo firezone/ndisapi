@@ -71,16 +71,16 @@ impl Drop for Ndisapi {
 
 impl Ndisapi {
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
-        let mut adapters: MaybeUninit<driver::TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
+        let mut adapters: MaybeUninit<TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
 
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_GET_TCPIP_INTERFACES,
+                IOCTL_NDISRD_GET_TCPIP_INTERFACES,
                 Some(adapters.as_mut_ptr() as _),
-                size_of::<driver::TcpAdapterList>() as u32,
+                size_of::<TcpAdapterList>() as u32,
                 Some(adapters.as_mut_ptr() as _),
-                size_of::<driver::TcpAdapterList>() as u32,
+                size_of::<TcpAdapterList>() as u32,
                 None,
                 None,
             )
@@ -112,7 +112,7 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_GET_VERSION,
+                IOCTL_NDISRD_GET_VERSION,
                 Some(&mut version as *mut c_uint as _),
                 size_of::<u32>() as u32,
                 Some(&mut version as *mut c_uint as _),
@@ -156,12 +156,8 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packet(
-        &self,
-        adapter_handle: HANDLE,
-        packet: &mut driver::EthPacket,
-    ) -> Result<()> {
-        let eth_request = driver::EthRequest {
+    pub fn read_packet(&self, adapter_handle: HANDLE, packet: &mut EthPacket) -> Result<()> {
+        let eth_request = EthRequest {
             adapter_handle,
             packet: *packet,
         };
@@ -169,11 +165,11 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_READ_PACKET,
-                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
-                size_of::<driver::EthRequest>() as u32,
-                Some(&eth_request as *const driver::EthRequest as *mut std::ffi::c_void),
-                size_of::<driver::EthRequest>() as u32,
+                IOCTL_NDISRD_READ_PACKET,
+                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                size_of::<EthRequest>() as u32,
+                Some(&eth_request as *const EthRequest as *mut std::ffi::c_void),
+                size_of::<EthRequest>() as u32,
                 None,
                 None,
             )
@@ -186,12 +182,12 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packets<'a, T: Iterator<Item = &'a mut driver::EthPacket>, const N: usize>(
+    pub fn read_packets<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
         packets: T,
     ) -> Result<usize> {
-        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+        let mut eth_request = EthMRequest::new(adapter_handle);
 
         for (i, packet) in packets.enumerate() {
             eth_request.packets[i] = *packet;
@@ -201,11 +197,11 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_READ_PACKETS,
-                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
-                size_of::<driver::EthMRequest<N>>() as u32,
-                Some(&eth_request as *const driver::EthMRequest<N> as *mut std::ffi::c_void),
-                size_of::<driver::EthMRequest<N>>() as u32,
+                IOCTL_NDISRD_READ_PACKETS,
+                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                size_of::<EthMRequest<N>>() as u32,
+                Some(&eth_request as *const EthMRequest<N> as *mut std::ffi::c_void),
+                size_of::<EthMRequest<N>>() as u32,
                 None,
                 None,
             )
@@ -221,9 +217,9 @@ impl Ndisapi {
     pub fn send_packet_to_adapter(
         &self,
         adapter_handle: HANDLE,
-        packet: &mut driver::EthPacket,
+        packet: &mut EthPacket,
     ) -> Result<()> {
-        let eth_request = driver::EthRequest {
+        let eth_request = EthRequest {
             adapter_handle,
             packet: *packet,
         };
@@ -231,9 +227,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER,
-                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
-                size_of::<driver::EthRequest>() as u32,
+                IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER,
+                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                size_of::<EthRequest>() as u32,
                 None,
                 0,
                 None,
@@ -251,9 +247,9 @@ impl Ndisapi {
     pub fn send_packet_to_mstcp(
         &self,
         adapter_handle: HANDLE,
-        packet: &mut driver::EthPacket,
+        packet: &mut EthPacket,
     ) -> Result<()> {
-        let eth_request = driver::EthRequest {
+        let eth_request = EthRequest {
             adapter_handle,
             packet: *packet,
         };
@@ -261,9 +257,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SEND_PACKET_TO_MSTCP,
-                Some(&eth_request as *const driver::EthRequest as *const std::ffi::c_void),
-                size_of::<driver::EthRequest>() as u32,
+                IOCTL_NDISRD_SEND_PACKET_TO_MSTCP,
+                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                size_of::<EthRequest>() as u32,
                 None,
                 0,
                 None,
@@ -278,16 +274,12 @@ impl Ndisapi {
         }
     }
 
-    pub fn send_packets_to_mstcp<
-        'a,
-        T: Iterator<Item = &'a mut driver::EthPacket>,
-        const N: usize,
-    >(
+    pub fn send_packets_to_mstcp<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
         packets: T,
     ) -> Result<()> {
-        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+        let mut eth_request = EthMRequest::new(adapter_handle);
 
         for (i, packet) in packets.enumerate() {
             eth_request.packets[i] = *packet;
@@ -297,9 +289,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
-                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
-                size_of::<driver::EthMRequest<N>>() as u32,
+                IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
+                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                size_of::<EthMRequest<N>>() as u32,
                 None,
                 0,
                 None,
@@ -314,16 +306,12 @@ impl Ndisapi {
         }
     }
 
-    pub fn send_packets_to_adapter<
-        'a,
-        T: Iterator<Item = &'a mut driver::EthPacket>,
-        const N: usize,
-    >(
+    pub fn send_packets_to_adapter<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
         packets: T,
     ) -> Result<()> {
-        let mut eth_request = driver::EthMRequest::new(adapter_handle);
+        let mut eth_request = EthMRequest::new(adapter_handle);
 
         for (i, packet) in packets.enumerate() {
             eth_request.packets[i] = *packet;
@@ -333,9 +321,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
-                Some(&eth_request as *const driver::EthMRequest<N> as *const std::ffi::c_void),
-                size_of::<driver::EthMRequest<N>>() as u32,
+                IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
+                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                size_of::<EthMRequest<N>>() as u32,
                 None,
                 0,
                 None,
@@ -351,7 +339,7 @@ impl Ndisapi {
     }
 
     pub fn set_adapter_mode(&self, adapter_handle: HANDLE, flags: u32) -> Result<()> {
-        let adapter_mode = driver::AdapterMode {
+        let adapter_mode = AdapterMode {
             adapter_handle,
             flags,
         };
@@ -359,9 +347,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SET_ADAPTER_MODE,
-                Some(&adapter_mode as *const driver::AdapterMode as *const std::ffi::c_void),
-                size_of::<driver::AdapterMode>() as u32,
+                IOCTL_NDISRD_SET_ADAPTER_MODE,
+                Some(&adapter_mode as *const AdapterMode as *const std::ffi::c_void),
+                size_of::<AdapterMode>() as u32,
                 None,
                 0,
                 None,
@@ -377,7 +365,7 @@ impl Ndisapi {
     }
 
     pub fn set_packet_event(&self, adapter_handle: HANDLE, event_handle: HANDLE) -> Result<()> {
-        let adapter_event = driver::AdapterEvent {
+        let adapter_event = AdapterEvent {
             adapter_handle,
             event_handle,
         };
@@ -385,9 +373,9 @@ impl Ndisapi {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                driver::IOCTL_NDISRD_SET_EVENT,
-                Some(&adapter_event as *const driver::AdapterEvent as *const std::ffi::c_void),
-                size_of::<driver::AdapterEvent>() as u32,
+                IOCTL_NDISRD_SET_EVENT,
+                Some(&adapter_event as *const AdapterEvent as *const std::ffi::c_void),
+                size_of::<AdapterEvent>() as u32,
                 None,
                 0,
                 None,

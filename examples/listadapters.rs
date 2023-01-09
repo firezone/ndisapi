@@ -1,4 +1,3 @@
-use ndisapi;
 use windows::core::Result;
 
 fn main() -> Result<()> {
@@ -8,7 +7,7 @@ fn main() -> Result<()> {
         Ok(ndisapi) => ndisapi,
         Err(err) => panic!(
             "WinpkFilter driver is not installed or failed to load! Error code: {}",
-            err.to_string()
+            err
         ),
     };
 

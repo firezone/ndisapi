@@ -189,7 +189,7 @@ impl Ndisapi {
     pub fn read_packets<'a, T: Iterator<Item = &'a mut driver::EthPacket>, const N: usize>(
         &self,
         adapter_handle: HANDLE,
-        mut packets: T,
+        packets: T,
     ) -> Result<usize> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
@@ -285,7 +285,7 @@ impl Ndisapi {
     >(
         &self,
         adapter_handle: HANDLE,
-        mut packets: T,
+        packets: T,
     ) -> Result<()> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 
@@ -321,7 +321,7 @@ impl Ndisapi {
     >(
         &self,
         adapter_handle: HANDLE,
-        mut packets: T,
+        packets: T,
     ) -> Result<()> {
         let mut eth_request = driver::EthMRequest::new(adapter_handle);
 

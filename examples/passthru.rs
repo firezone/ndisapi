@@ -1,31 +1,27 @@
+use clap::Parser;
 use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
-use std::env;
 use windows::{
     core::Result,
     Win32::Foundation::HANDLE,
     Win32::System::Threading::{CreateEventW, WaitForSingleObject},
 };
 
+#[derive(Parser)]
+struct Cli {
+    interface_index: usize,
+    packets_number: usize,
+}
+
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
+    let Cli {
+        mut interface_index,
+        mut packets_number,
+    } = Cli::parse();
 
-    let interface_idx: usize = args[1]
-        .parse::<usize>()
-        .expect("Failed to parse network interface index")
-        - 1;
-    let mut packets_num: usize = args[2]
-        .parse::<usize>()
-        .expect("Failed to parse number of packet to filter");
+    interface_index -= 1;
 
-    let result = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME);
-
-    let driver = match result {
-        Ok(ndisapi) => ndisapi,
-        Err(err) => panic!(
-            "WinpkFilter driver is not installed or failed to load! Error code: {}",
-            err
-        ),
-    };
+    let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME)
+        .expect("WinpkFilter driver is not installed or failed to load!");
 
     let (major_version, minor_version, revision) = driver.get_version()?;
 
@@ -36,14 +32,14 @@ fn main() -> Result<()> {
 
     let adapters = driver.get_tcpip_bound_adapters_info()?;
 
-    if interface_idx + 1 > adapters.len() {
+    if interface_index + 1 > adapters.len() {
         panic!("Interface index is beoynd the number of available interfaces");
     }
 
     println!(
         "Using interface {} with {} packets",
-        adapters[interface_idx].get_name(),
-        packets_num
+        adapters[interface_index].get_name(),
+        packets_number
     );
 
     // Create Win32 event
@@ -53,11 +49,11 @@ fn main() -> Result<()> {
     }
 
     // Set the event within the driver
-    driver.set_packet_event(adapters[interface_idx].get_handle(), event)?;
+    driver.set_packet_event(adapters[interface_index].get_handle(), event)?;
 
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
-        adapters[interface_idx].get_handle(),
+        adapters[interface_index].get_handle(),
         ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
     )?;
 
@@ -69,24 +65,24 @@ fn main() -> Result<()> {
         buffer: &mut ib as *mut ndisapi::IntermediateBuffer,
     };
 
-    while packets_num > 0 {
+    while packets_number > 0 {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
         while driver
-            .read_packet(adapters[interface_idx].get_handle(), &mut eth_packet)
+            .read_packet(adapters[interface_index].get_handle(), &mut eth_packet)
             .ok()
             .is_some()
         {
             // Print packet information
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
-                println!("\n{} - MSTCP --> Interface\n", packets_num);
+                println!("\n{} - MSTCP --> Interface\n", packets_number);
             } else {
-                println!("\n{} - Interface --> MSTCP\n", packets_num);
+                println!("\n{} - Interface --> MSTCP\n", packets_number);
             }
 
             // Decrement packets counter
-            packets_num -= 1;
+            packets_number -= 1;
 
             // Print some informations about the sliced packet
             match SlicedPacket::from_ethernet(&ib.buffer.0) {
@@ -158,21 +154,21 @@ fn main() -> Result<()> {
             // Re-inject the packet back into the network stack
             if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
                 match driver
-                    .send_packet_to_adapter(adapters[interface_idx].get_handle(), &mut eth_packet)
+                    .send_packet_to_adapter(adapters[interface_index].get_handle(), &mut eth_packet)
                 {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to adapter. Error code = {err}"),
                 };
             } else {
                 match driver
-                    .send_packet_to_mstcp(adapters[interface_idx].get_handle(), &mut eth_packet)
+                    .send_packet_to_mstcp(adapters[interface_index].get_handle(), &mut eth_packet)
                 {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to mstcp. Error code = {err}"),
                 }
             }
 
-            if packets_num == 0 {
+            if packets_number == 0 {
                 println!("Filtering complete\n");
                 break;
             }

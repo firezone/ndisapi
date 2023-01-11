@@ -54,7 +54,7 @@ fn main() -> Result<()> {
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
         adapters[interface_index].get_handle(),
-        ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
+        ndisapi::FilterFlags::MSTCP_FLAG_SENT_RECEIVE_TUNNEL,
     )?;
 
     // Allocate single IntermediateBuffer on the stack
@@ -75,7 +75,7 @@ fn main() -> Result<()> {
             .is_some()
         {
             // Print packet information
-            if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
+            if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                 println!("\n{} - MSTCP --> Interface\n", packets_number);
             } else {
                 println!("\n{} - Interface --> MSTCP\n", packets_number);
@@ -152,7 +152,7 @@ fn main() -> Result<()> {
             }
 
             // Re-inject the packet back into the network stack
-            if ib.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
+            if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                 match driver
                     .send_packet_to_adapter(adapters[interface_index].get_handle(), &mut eth_packet)
                 {

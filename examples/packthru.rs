@@ -55,7 +55,7 @@ fn main() -> Result<()> {
     // Put network interface into the tunnel mode
     driver.set_adapter_mode(
         adapters[interface_index].get_handle(),
-        ndisapi::MSTCP_FLAG_SENT_TUNNEL | ndisapi::MSTCP_FLAG_RECV_TUNNEL,
+        ndisapi::FilterFlags::MSTCP_FLAG_SENT_RECEIVE_TUNNEL,
     )?;
 
     // Container to store IntermediateBuffers allocated on the heap
@@ -95,7 +95,7 @@ fn main() -> Result<()> {
                 let eth_packet = to_read.pop_front().unwrap();
                 let packet = eth_packet.get_buffer();
                 // Print packet information
-                if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
+                if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                     println!(
                         "\n{} - MSTCP --> Interface\n",
                         packets_number + (packets_read - i)
@@ -175,7 +175,7 @@ fn main() -> Result<()> {
                     }
                 }
 
-                if packet.device_flags == ndisapi::PACKET_FLAG_ON_SEND {
+                if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                     to_adapter.push_back(eth_packet);
                 } else {
                     to_mstcp.push_back(eth_packet);

@@ -1,3 +1,4 @@
+use bitflags::bitflags;
 use windows::{core::w, Win32::Foundation::HANDLE};
 
 pub const NDISRD_DRIVER_NAME: ::windows::core::PCWSTR = w!("\\\\.\\NDISRD");
@@ -5,16 +6,6 @@ pub const ADAPTER_NAME_SIZE: usize = 256;
 pub const ADAPTER_LIST_SIZE: usize = 32;
 pub const ETHER_ADDR_LENGTH: usize = 6;
 pub const MAX_ETHER_FRAME: usize = 1514; // 9014usize bytes if driver was built with the JUMBO_FRAME_SUPPORTED
-pub const MSTCP_FLAG_SENT_TUNNEL: u32 = 1;
-pub const MSTCP_FLAG_RECV_TUNNEL: u32 = 2;
-pub const MSTCP_FLAG_SENT_LISTEN: u32 = 4;
-pub const MSTCP_FLAG_RECV_LISTEN: u32 = 8;
-pub const MSTCP_FLAG_FILTER_DIRECT: u32 = 16;
-pub const MSTCP_FLAG_LOOPBACK_FILTER: u32 = 32;
-pub const MSTCP_FLAG_LOOPBACK_BLOCK: u32 = 64;
-pub const PACKET_FLAG_ON_SEND: u32 = 1;
-pub const PACKET_FLAG_ON_RECEIVE: u32 = 2;
-pub const ANY_SIZE: u32 = 1;
 pub const RAS_LINK_BUFFER_LENGTH: u32 = 2048;
 pub const RAS_LINKS_MAX: u32 = 256;
 pub const ETH_802_3_SRC_ADDRESS: u32 = 1;
@@ -48,6 +39,29 @@ pub const FILTER_PACKET_DROP_RDR: u32 = 5;
 pub const DATA_LINK_LAYER_VALID: u32 = 1;
 pub const NETWORK_LAYER_VALID: u32 = 2;
 pub const TRANSPORT_LAYER_VALID: u32 = 4;
+
+bitflags! {
+    pub struct FilterFlags: u32 {
+        const MSTCP_FLAG_SENT_TUNNEL = 1;
+        const MSTCP_FLAG_RECV_TUNNEL = 2;
+        const MSTCP_FLAG_SENT_LISTEN = 4;
+        const MSTCP_FLAG_RECV_LISTEN = 8;
+        const MSTCP_FLAG_FILTER_DIRECT = 16;
+        const MSTCP_FLAG_LOOPBACK_FILTER = 32;
+        const MSTCP_FLAG_LOOPBACK_BLOCK = 64;
+        const MSTCP_FLAG_SENT_RECEIVE_TUNNEL = Self::MSTCP_FLAG_SENT_TUNNEL.bits | Self::MSTCP_FLAG_RECV_TUNNEL.bits;
+        const MSTCP_FLAG_SENT_RECEIVE_LISTEN = Self::MSTCP_FLAG_SENT_LISTEN.bits | Self::MSTCP_FLAG_RECV_LISTEN.bits;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct DirectionFlags: u32 {
+        const PACKET_FLAG_ON_SEND= 1;
+        const PACKET_FLAG_ON_RECEIVE = 2;
+        const PACKET_FLAG_ON_SEND_RECEIVE = Self::PACKET_FLAG_ON_SEND.bits | Self::PACKET_FLAG_ON_RECEIVE.bits;
+    }
+}
 
 /// TcpAdapterList
 /// * Rust equivalent for TCP_AdapterList
@@ -95,7 +109,7 @@ impl Default for IntermediateBufferHeaderUnion {
 #[derive(Copy, Clone, Default)]
 pub struct IntermediateBuffer {
     pub header: IntermediateBufferHeaderUnion,
-    pub device_flags: u32,
+    pub device_flags: DirectionFlags,
     pub length: u32,
     pub flags: u32,
     pub vlan_8021q: u32,
@@ -118,6 +132,10 @@ impl IntermediateBuffer {
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub fn get_device_flags(&self) -> DirectionFlags {
+        self.device_flags
+    }
 }
 
 /// AdapterMode
@@ -126,7 +144,7 @@ impl IntermediateBuffer {
 #[derive(Debug, Copy, Clone)]
 pub struct AdapterMode {
     pub adapter_handle: HANDLE,
-    pub flags: u32,
+    pub flags: FilterFlags,
 }
 
 /// EthPacket

@@ -336,7 +336,7 @@ impl Ndisapi {
         }
     }
 
-    pub fn set_adapter_mode(&self, adapter_handle: HANDLE, flags: u32) -> Result<()> {
+    pub fn set_adapter_mode(&self, adapter_handle: HANDLE, flags: FilterFlags) -> Result<()> {
         let adapter_mode = AdapterMode {
             adapter_handle,
             flags,

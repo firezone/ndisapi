@@ -44,10 +44,7 @@ fn main() -> Result<()> {
     );
 
     // Create Win32 event
-    let event: HANDLE;
-    unsafe {
-        event = CreateEventW(None, true, false, None)?;
-    }
+    let event: HANDLE = unsafe { CreateEventW(None, true, false, None)? };
 
     // Set the event within the driver
     driver.set_packet_event(adapters[interface_index].get_handle(), event)?;

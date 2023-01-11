@@ -1,15 +1,7 @@
 use windows::core::Result;
 
 fn main() -> Result<()> {
-    let result = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME);
-
-    let driver = match result {
-        Ok(ndisapi) => ndisapi,
-        Err(err) => panic!(
-            "WinpkFilter driver is not installed or failed to load! Error code: {}",
-            err
-        ),
-    };
+  let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME).expect("WinpkFilter driver is not installed or failed to load!);
 
     let (major_version, minor_version, revision) = driver.get_version()?;
 

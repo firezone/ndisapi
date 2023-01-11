@@ -61,10 +61,8 @@ impl NetworkAdapterInfo {
 
 impl Drop for Ndisapi {
     fn drop(&mut self) {
-        if !self.driver_handle.is_invalid() {
-            unsafe {
-                CloseHandle(self.driver_handle);
-            }
+        unsafe {
+            CloseHandle(self.driver_handle);
         }
     }
 }

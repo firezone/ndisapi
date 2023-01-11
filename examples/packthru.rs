@@ -59,9 +59,9 @@ fn main() -> Result<()> {
     let mut ib: Vec<Box<ndisapi::IntermediateBuffer>> = Vec::with_capacity(256);
 
     // Containers to read/write IntermediateBuffers from/to the driver
-    let mut to_read: VecDeque<ndisapi::EthPacket> = VecDeque::new();
-    let mut to_mstcp: VecDeque<ndisapi::EthPacket> = VecDeque::new();
-    let mut to_adapter: VecDeque<ndisapi::EthPacket> = VecDeque::new();
+    let mut to_read = VecDeque::new();
+    let mut to_mstcp = VecDeque::new();
+    let mut to_adapter = VecDeque::new();
 
     // Allocate 256 IntermediateBuffers and initialize the read dequeue
     for _i in 0..256 {

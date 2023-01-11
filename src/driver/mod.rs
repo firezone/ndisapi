@@ -156,11 +156,24 @@ pub struct EthPacket {
 }
 
 impl EthPacket {
-    pub fn get_buffer_mut(&mut self) -> &mut IntermediateBuffer {
-        unsafe { &mut *self.buffer }
+    /// Returns the mutable reference to the IntermediateBuffer pointed to by the EthPacket
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthPacket.buffer may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn get_buffer_mut(&mut self) -> &mut IntermediateBuffer {
+        &mut *self.buffer
     }
-    pub fn get_buffer(&self) -> &IntermediateBuffer {
-        unsafe { &mut *self.buffer }
+
+    /// Returns the reference to the IntermediateBuffer pointed to by the EthPacket
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthPacket.buffer may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn get_buffer(&self) -> &IntermediateBuffer {
+        &mut *self.buffer
     }
 }
 

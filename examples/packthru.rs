@@ -90,7 +90,7 @@ fn main() -> Result<()> {
 
             for i in 0..packets_read {
                 let eth_packet = to_read.pop_front().unwrap();
-                let packet = eth_packet.get_buffer();
+                let packet = unsafe { eth_packet.get_buffer() };
                 // Print packet information
                 if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                     println!(

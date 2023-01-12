@@ -154,19 +154,20 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packet(&self, adapter_handle: HANDLE, packet: &mut EthPacket) -> Result<()> {
-        let eth_request = EthRequest {
-            adapter_handle,
-            packet: *packet,
-        };
-
+    /// Reads the the single packet (IntermediateBuffer) from the driver
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthRequest.packet may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn read_packet(&self, packet: &mut EthRequest) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_READ_PACKET,
-                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                Some(packet as *const EthRequest as *const std::ffi::c_void),
                 size_of::<EthRequest>() as u32,
-                Some(&eth_request as *const EthRequest as *mut std::ffi::c_void),
+                Some(packet as *const EthRequest as *mut std::ffi::c_void),
                 size_of::<EthRequest>() as u32,
                 None,
                 None,
@@ -180,25 +181,23 @@ impl Ndisapi {
         }
     }
 
-    pub fn read_packets<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
+    /// Reads the block of packets (IntermediateBuffer) from the driver
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthMRequest<N>.packets may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn read_packets<const N: usize>(
         &self,
-        adapter_handle: HANDLE,
-        packets: T,
+        packets: &mut EthMRequest<N>,
     ) -> Result<usize> {
-        let mut eth_request = EthMRequest::new(adapter_handle);
-
-        for (i, packet) in packets.enumerate() {
-            eth_request.packets[i] = *packet;
-            eth_request.packet_number += 1;
-        }
-
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_READ_PACKETS,
-                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                Some(packets as *const EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<EthMRequest<N>>() as u32,
-                Some(&eth_request as *const EthMRequest<N> as *mut std::ffi::c_void),
+                Some(packets as *const EthMRequest<N> as *mut std::ffi::c_void),
                 size_of::<EthMRequest<N>>() as u32,
                 None,
                 None,
@@ -206,27 +205,24 @@ impl Ndisapi {
         };
 
         if result.as_bool() {
-            Ok(eth_request.packet_success as usize)
+            Ok(packets.packet_success as usize)
         } else {
             Err(unsafe { GetLastError() }.into())
         }
     }
 
-    pub fn send_packet_to_adapter(
-        &self,
-        adapter_handle: HANDLE,
-        packet: &mut EthPacket,
-    ) -> Result<()> {
-        let eth_request = EthRequest {
-            adapter_handle,
-            packet: *packet,
-        };
-
+    /// Writes the single packet (IntermediateBuffer) to the driver to be indicated downwards the network stack
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthRequest.packet may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn send_packet_to_adapter(&self, packet: &EthRequest) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER,
-                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                Some(packet as *const EthRequest as *const std::ffi::c_void),
                 size_of::<EthRequest>() as u32,
                 None,
                 0,
@@ -242,21 +238,18 @@ impl Ndisapi {
         }
     }
 
-    pub fn send_packet_to_mstcp(
-        &self,
-        adapter_handle: HANDLE,
-        packet: &mut EthPacket,
-    ) -> Result<()> {
-        let eth_request = EthRequest {
-            adapter_handle,
-            packet: *packet,
-        };
-
+    /// Writes the single packet (IntermediateBuffer) to the driver to be indicated downwards the network stack
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthRequest.packet may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn send_packet_to_mstcp(&self, packet: &EthRequest) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_SEND_PACKET_TO_MSTCP,
-                Some(&eth_request as *const EthRequest as *const std::ffi::c_void),
+                Some(packet as *const EthRequest as *const std::ffi::c_void),
                 size_of::<EthRequest>() as u32,
                 None,
                 0,
@@ -272,23 +265,21 @@ impl Ndisapi {
         }
     }
 
-    pub fn send_packets_to_mstcp<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
+    /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated upwards the network stack
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthMRequest<N>.packets may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn send_packets_to_mstcp<const N: usize>(
         &self,
-        adapter_handle: HANDLE,
-        packets: T,
+        packets: &EthMRequest<N>,
     ) -> Result<()> {
-        let mut eth_request = EthMRequest::new(adapter_handle);
-
-        for (i, packet) in packets.enumerate() {
-            eth_request.packets[i] = *packet;
-            eth_request.packet_number += 1;
-        }
-
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_SEND_PACKETS_TO_MSTCP,
-                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                Some(packets as *const EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<EthMRequest<N>>() as u32,
                 None,
                 0,
@@ -304,23 +295,21 @@ impl Ndisapi {
         }
     }
 
-    pub fn send_packets_to_adapter<'a, T: Iterator<Item = &'a mut EthPacket>, const N: usize>(
+    /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated downwards the network stack
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthMRequest<N>.packets may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn send_packets_to_adapter<const N: usize>(
         &self,
-        adapter_handle: HANDLE,
-        packets: T,
+        packets: &EthMRequest<N>,
     ) -> Result<()> {
-        let mut eth_request = EthMRequest::new(adapter_handle);
-
-        for (i, packet) in packets.enumerate() {
-            eth_request.packets[i] = *packet;
-            eth_request.packet_number += 1;
-        }
-
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
-                Some(&eth_request as *const EthMRequest<N> as *const std::ffi::c_void),
+                Some(packets as *const EthMRequest<N> as *const std::ffi::c_void),
                 size_of::<EthMRequest<N>>() as u32,
                 None,
                 0,

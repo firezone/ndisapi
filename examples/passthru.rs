@@ -61,19 +61,18 @@ fn main() -> Result<()> {
     let mut ib = ndisapi::IntermediateBuffer::default();
 
     // Initialize EthPacket to pass to driver API
-    let mut eth_packet = ndisapi::EthPacket {
-        buffer: &mut ib as *mut ndisapi::IntermediateBuffer,
+    let mut packet = ndisapi::EthRequest {
+        adapter_handle: adapters[interface_index].get_handle(),
+        packet: ndisapi::EthPacket {
+            buffer: &mut ib as *mut ndisapi::IntermediateBuffer,
+        },
     };
 
     while packets_number > 0 {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while driver
-            .read_packet(adapters[interface_index].get_handle(), &mut eth_packet)
-            .ok()
-            .is_some()
-        {
+        while unsafe { driver.read_packet(&mut packet) }.ok().is_some() {
             // Print packet information
             if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                 println!("\n{} - MSTCP --> Interface\n", packets_number);
@@ -153,16 +152,12 @@ fn main() -> Result<()> {
 
             // Re-inject the packet back into the network stack
             if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
-                match driver
-                    .send_packet_to_adapter(adapters[interface_index].get_handle(), &mut eth_packet)
-                {
+                match unsafe { driver.send_packet_to_adapter(&packet) } {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to adapter. Error code = {err}"),
                 };
             } else {
-                match driver
-                    .send_packet_to_mstcp(adapters[interface_index].get_handle(), &mut eth_packet)
-                {
+                match unsafe { driver.send_packet_to_mstcp(&packet) } {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to mstcp. Error code = {err}"),
                 }

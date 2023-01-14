@@ -467,11 +467,35 @@ impl Ndisapi {
 
     /// A user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
     /// The filter driver will signal this event when a WAN (dial-up, DSL, ADSL or etc.) connection is established or terminated.
-    pub fn set_wan_event(&self, event_handle: HANDLE) -> Result<()>{
+    pub fn set_wan_event(&self, event_handle: HANDLE) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_SET_WAN_EVENT,
+                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// The user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
+    /// Helper driver will signal this event when TCP/IP bound adapter’s list changes (an example this happens on plug/unplug
+    /// network card, disable/enable network connection or etc.).
+    pub fn set_adapter_list_change_event(&self, event_handle: HANDLE) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_SET_ADAPTER_EVENT,
                 Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
                 size_of::<HANDLE>() as u32,
                 None,

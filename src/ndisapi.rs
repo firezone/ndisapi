@@ -511,4 +511,27 @@ impl Ndisapi {
             Ok(())
         }
     }
+
+    /// The user application should create a Win32 event (with CreateEvent API call) and pass adapter handle and event handle
+    /// to this function. The filter driver will signal this event when the hardware filter for the adapter changes.
+    pub fn set_hw_packet_filter_event(&self, event_handle: HANDLE) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_SET_ADAPTER_HWFILTER_EVENT,
+                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
 }

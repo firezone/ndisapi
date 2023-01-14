@@ -335,7 +335,9 @@ impl Ndisapi {
     /// MSTCP_FLAG_RECV_TUNNEL – queue all packets indicated by network interface to MSTCP. Original packet dropped.
     /// MSTCP_FLAG_SENT_LISTEN – queue all packets sent from MSTCP to network interface. Original packet goes ahead.
     /// MSTCP_FLAG_RECV_LISTEN – queue all packets indicated by network interface to MSTCP. Original packet goes ahead.
-    /// MSTCP_FLAG_FILTER_DIRECT – In promiscuous mode TCP/IP stack receives all packets in the Ethernet segment and replies with various ICMP packets, to prevent this set this flag. All packets with destination MAC different from FF-FF-FF-FF-FF-FF and network interface current MAC will never reach MSTCP.
+    /// MSTCP_FLAG_FILTER_DIRECT – In promiscuous mode TCP/IP stack receives all packets in the Ethernet segment and replies
+    /// with various ICMP packets, to prevent this set this flag. All packets with destination MAC different from
+    /// FF-FF-FF-FF-FF-FF and network interface current MAC will never reach MSTCP.
     pub fn set_adapter_mode(&self, adapter_handle: HANDLE, flags: FilterFlags) -> Result<()> {
         let adapter_mode = AdapterMode {
             adapter_handle,

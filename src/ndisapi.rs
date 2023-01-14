@@ -351,6 +351,32 @@ impl Ndisapi {
         }
     }
 
+    pub fn get_adapter_mode(&self, adapter_handle: HANDLE) -> Result<FilterFlags> {
+        let mut adapter_mode = AdapterMode {
+            adapter_handle,
+            ..Default::default()
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_ADAPTER_MODE,
+                Some(&adapter_mode as *const AdapterMode as *const std::ffi::c_void),
+                size_of::<AdapterMode>() as u32,
+                Some(&mut adapter_mode as *mut AdapterMode as *mut std::ffi::c_void),
+                size_of::<AdapterMode>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(adapter_mode.flags)
+        }
+    }
+
     pub fn set_packet_event(&self, adapter_handle: HANDLE, event_handle: HANDLE) -> Result<()> {
         let adapter_event = AdapterEvent {
             adapter_handle,

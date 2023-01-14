@@ -41,6 +41,7 @@ pub const NETWORK_LAYER_VALID: u32 = 2;
 pub const TRANSPORT_LAYER_VALID: u32 = 4;
 
 bitflags! {
+    #[derive(Default)]
     pub struct FilterFlags: u32 {
         const MSTCP_FLAG_SENT_TUNNEL = 1;
         const MSTCP_FLAG_RECV_TUNNEL = 2;
@@ -141,7 +142,7 @@ impl IntermediateBuffer {
 /// AdapterMode
 /// * Rust equivalent for ADAPTER_MODE
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct AdapterMode {
     pub adapter_handle: HANDLE,
     pub flags: FilterFlags,

@@ -17,6 +17,10 @@ fn main() -> Result<()> {
         println!("\t Medium: {}", value.get_medium());
         println!("\t MAC: {:?}", value.get_hw_address());
         println!("\t MTU: {}", value.get_mtu());
+        println!(
+            "\t FilterFlags: {:?}",
+            driver.get_adapter_mode(value.get_handle()).unwrap()
+        );
     }
 
     Ok(())

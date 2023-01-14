@@ -440,4 +440,28 @@ impl Ndisapi {
             Ok(())
         }
     }
+
+    /// Queries the adapter packet queue size for the given adapter handle
+    pub fn get_adapter_packet_queue_size(&self, adapter_handle: HANDLE) -> Result<u32> {
+        let mut queue_size = 0u32;
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_ADAPTER_QUEUE_SIZE,
+                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                Some(&mut queue_size as *mut u32 as *mut std::ffi::c_void),
+                size_of::<u32>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(queue_size)
+        }
+    }
 }

@@ -68,6 +68,7 @@ impl Drop for Ndisapi {
 }
 
 impl Ndisapi {
+    /// Queries information on available network interfaces
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
         let mut adapters: MaybeUninit<TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
 
@@ -104,6 +105,7 @@ impl Ndisapi {
         }
     }
 
+    /// Queries NDIS filter driver version
     pub fn get_version(&self) -> Result<(u32, u32, u32)> {
         let mut version = u32::MAX;
 
@@ -131,6 +133,7 @@ impl Ndisapi {
         }
     }
 
+    /// Initializes new Ndisapi instance opening the NDIS filter driver
     pub fn new<P>(filename: P) -> Result<Self>
     where
         P: ::std::convert::Into<::windows::core::PCWSTR>,
@@ -325,6 +328,14 @@ impl Ndisapi {
         }
     }
 
+    /// Sets the packet filter mode for the selected network interface
+    /// adapter_handle: must be set to the interface handle (obtained via call to get_tcpip_bound_adapters_info).
+    /// flags: combination of the XXX_LISTEN or XXX_TUNNEL flags:
+    /// MSTCP_FLAG_SENT_TUNNEL – queue all packets sent from MSTCP to network interface. Original packet dropped.
+    /// MSTCP_FLAG_RECV_TUNNEL – queue all packets indicated by network interface to MSTCP. Original packet dropped.
+    /// MSTCP_FLAG_SENT_LISTEN – queue all packets sent from MSTCP to network interface. Original packet goes ahead.
+    /// MSTCP_FLAG_RECV_LISTEN – queue all packets indicated by network interface to MSTCP. Original packet goes ahead.
+    /// MSTCP_FLAG_FILTER_DIRECT – In promiscuous mode TCP/IP stack receives all packets in the Ethernet segment and replies with various ICMP packets, to prevent this set this flag. All packets with destination MAC different from FF-FF-FF-FF-FF-FF and network interface current MAC will never reach MSTCP.
     pub fn set_adapter_mode(&self, adapter_handle: HANDLE, flags: FilterFlags) -> Result<()> {
         let adapter_mode = AdapterMode {
             adapter_handle,
@@ -351,6 +362,7 @@ impl Ndisapi {
         }
     }
 
+    /// Queries the packet filter mode for the selected network interface
     pub fn get_adapter_mode(&self, adapter_handle: HANDLE) -> Result<FilterFlags> {
         let mut adapter_mode = AdapterMode {
             adapter_handle,
@@ -377,6 +389,30 @@ impl Ndisapi {
         }
     }
 
+    /// Flushes the packet queue in the NDIS filter driver for the requested interface.
+    pub fn flush_adapter_packet_queue(&self, adapter_handle: HANDLE) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE,
+                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Associates the specified Win32 event with specified network interface.
+    /// This even will be signalled by the NDIS filter when it has queued packets available for read.
     pub fn set_packet_event(&self, adapter_handle: HANDLE, event_handle: HANDLE) -> Result<()> {
         let adapter_event = AdapterEvent {
             adapter_handle,

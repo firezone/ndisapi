@@ -6,16 +6,10 @@ pub const ADAPTER_NAME_SIZE: usize = 256;
 pub const ADAPTER_LIST_SIZE: usize = 32;
 pub const ETHER_ADDR_LENGTH: usize = 6;
 pub const MAX_ETHER_FRAME: usize = 1514; // 9014usize bytes if driver was built with the JUMBO_FRAME_SUPPORTED
-pub const RAS_LINK_BUFFER_LENGTH: u32 = 2048;
-pub const RAS_LINKS_MAX: u32 = 256;
-pub const ETH_802_3_SRC_ADDRESS: u32 = 1;
-pub const ETH_802_3_DEST_ADDRESS: u32 = 2;
-pub const ETH_802_3_PROTOCOL: u32 = 4;
+pub const RAS_LINK_BUFFER_LENGTH: usize = 2048;
+pub const RAS_LINKS_MAX: usize = 256;
 pub const IP_SUBNET_V4_TYPE: u32 = 1;
 pub const IP_RANGE_V4_TYPE: u32 = 2;
-pub const IP_V4_FILTER_SRC_ADDRESS: u32 = 1;
-pub const IP_V4_FILTER_DEST_ADDRESS: u32 = 2;
-pub const IP_V4_FILTER_PROTOCOL: u32 = 4;
 pub const IP_SUBNET_V6_TYPE: u32 = 1;
 pub const IP_RANGE_V6_TYPE: u32 = 2;
 pub const IP_V6_FILTER_SRC_ADDRESS: u32 = 1;
@@ -58,27 +52,45 @@ bitflags! {
 bitflags! {
     #[derive(Default)]
     pub struct DirectionFlags: u32 {
-        const PACKET_FLAG_ON_SEND= 1;
+        const PACKET_FLAG_ON_SEND = 1;
         const PACKET_FLAG_ON_RECEIVE = 2;
         const PACKET_FLAG_ON_SEND_RECEIVE = Self::PACKET_FLAG_ON_SEND.bits | Self::PACKET_FLAG_ON_RECEIVE.bits;
     }
 }
 
+bitflags! {
+    #[derive(Default)]
+    pub struct Eth802_3FilterFlags: u32 {
+        const ETH_802_3_SRC_ADDRESS = 1;
+        const ETH_802_3_DEST_ADDRESS = 2;
+        const ETH_802_3_PROTOCOL = 4;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct IpV4FilterFlags: u32 {
+        const IP_V4_FILTER_SRC_ADDRESS = 1;
+        const IP_V4_FILTER_DEST_ADDRESS = 2;
+        const IP_V4_FILTER_PROTOCOL = 4;
+    }
+}
+
 /// TcpAdapterList
-/// * Rust equivalent for TCP_AdapterList
+/// * Rust equivalent for [_TCP_AdapterList](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_tcp_adapterlist/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct TcpAdapterList {
-    pub adapter_count: ::std::os::raw::c_ulong,
-    pub adapter_name_list: [[::std::os::raw::c_uchar; ADAPTER_NAME_SIZE]; ADAPTER_LIST_SIZE],
+    pub adapter_count: u32,
+    pub adapter_name_list: [[u8; ADAPTER_NAME_SIZE]; ADAPTER_LIST_SIZE],
     pub adapter_handle: [HANDLE; ADAPTER_LIST_SIZE],
-    pub adapter_medium_list: [::std::os::raw::c_uint; ADAPTER_LIST_SIZE],
-    pub current_address: [[::std::os::raw::c_uchar; ETHER_ADDR_LENGTH]; ADAPTER_LIST_SIZE],
-    pub mtu: [::std::os::raw::c_ushort; ADAPTER_LIST_SIZE],
+    pub adapter_medium_list: [u32; ADAPTER_LIST_SIZE],
+    pub current_address: [[u8; ETHER_ADDR_LENGTH]; ADAPTER_LIST_SIZE],
+    pub mtu: [u16; ADAPTER_LIST_SIZE],
 }
 
 /// ListEntry
-/// * Rust equivalent for LIST_ENTRY
+/// * Rust equivalent for [_LIST_ENTRY](https://learn.microsoft.com/en-us/windows/win32/api/ntdef/ns-ntdef-list_entry)
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct ListEntry {
@@ -105,7 +117,7 @@ impl Default for IntermediateBufferHeaderUnion {
 }
 
 /// IntermediateBuffer
-/// * Rust equivalent for INTERMEDIATE_BUFFER
+/// * Rust equivalent for [_INTERMEDIATE_BUFFER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_intermediate_buffer/)
 #[repr(C, packed)]
 #[derive(Copy, Clone, Default)]
 pub struct IntermediateBuffer {
@@ -140,7 +152,7 @@ impl IntermediateBuffer {
 }
 
 /// AdapterMode
-/// * Rust equivalent for ADAPTER_MODE
+/// * Rust equivalent for [_ADAPTER_MODE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/adapter_mode/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone, Default)]
 pub struct AdapterMode {
@@ -149,7 +161,7 @@ pub struct AdapterMode {
 }
 
 /// EthPacket
-/// * Rust equivalent for NDISRD_ETH_Packet
+/// * Rust equivalent for [_NDISRD_ETH_Packet](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ndisrd_eth_packet/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthPacket {
@@ -171,7 +183,7 @@ impl EthPacket {
     ///
     /// # Safety
     ///
-    /// This function is unsafe becasue EthPacket.buffer may not be initilized or point to
+    /// This function is unsafe because EthPacket.buffer may not be initilized or point to
     /// the invalid memory.
     pub unsafe fn get_buffer(&self) -> &IntermediateBuffer {
         &mut *self.buffer
@@ -179,7 +191,7 @@ impl EthPacket {
 }
 
 /// EthRequest
-/// * Rust equivalent for ETH_REQUEST
+/// * Rust equivalent for [_ETH_REQUEST](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_request/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthRequest {
@@ -188,7 +200,7 @@ pub struct EthRequest {
 }
 
 /// EthMRequest
-/// * Rust equivalent for ETH_M_REQUEST using const generics
+/// * Rust equivalent for [_ETH_M_REQUEST](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_m_request/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthMRequest<const N: usize> {
@@ -212,12 +224,166 @@ impl<const N: usize> EthMRequest<N> {
 }
 
 /// AdapterEvent
-/// * Rust equivalent for ADAPTER_EVENT
+/// * Rust equivalent for [_ADAPTER_EVENT](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/adapter_event/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct AdapterEvent {
     pub adapter_handle: HANDLE,
     pub event_handle: HANDLE,
+}
+
+/// PacketOidData
+/// * Rust equivalent for [_PACKET_OID_DATA](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_packet_oid_data/)
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct PacketOidData<const N: usize> {
+    pub adapter_handle: HANDLE,
+    pub oid: u32,
+    pub length: u32,
+    pub data: [u8; N],
+}
+
+impl<const N: usize> PacketOidData<N> {
+    pub fn new(adapter_handle: HANDLE, oid: u32) -> Self {
+        Self {
+            adapter_handle,
+            oid,
+            length: N as u32,
+            data: [0u8; N],
+        }
+    }
+}
+
+/// RasLinkInformation
+/// * Rust equivalent for [_RAS_LINK_INFO](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ras_link_info/)
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct RasLinkInformation {
+    link_speed: u32,
+    maximum_total_size: u32,
+    remote_address: [u8; ETHER_ADDR_LENGTH],
+    local_address: [u8; ETHER_ADDR_LENGTH],
+    protocol_buffer_length: u32,
+    protocol_buffer: [u8; RAS_LINK_BUFFER_LENGTH],
+}
+
+impl RasLinkInformation {
+    pub fn get_link_speed(&self) -> u32 {
+        self.link_speed
+    }
+
+    pub fn get_maximum_total_size(&self) -> u32 {
+        self.maximum_total_size
+    }
+
+    pub fn get_remote_address(&self) -> &[u8; ETHER_ADDR_LENGTH] {
+        &self.remote_address
+    }
+
+    pub fn get_local_address(&self) -> &[u8; ETHER_ADDR_LENGTH] {
+        &self.local_address
+    }
+
+    pub fn get_protocol_buffer_length(&self) -> usize {
+        self.protocol_buffer_length as usize
+    }
+
+    pub fn get_protocol_buffer(&self) -> &[u8; RAS_LINK_BUFFER_LENGTH] {
+        &self.protocol_buffer
+    }
+}
+
+/// RasLinks
+/// * Rust equivalent for [_RAS_LINKS](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ras_links/)
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct RasLinks {
+    pub number_of_links: u32,
+    pub ras_links: [RasLinkInformation; RAS_LINKS_MAX],
+}
+
+impl Default for RasLinks {
+    fn default() -> Self {
+        // SAFETY: This structure is filled by the information by NDIS filter driver when passed as a memory buffer
+        // along with IOCTL_NDISRD_GET_RAS_LINKS. It is safe to be zeroed because contains only values and arrays that
+        // can be default initialized with zeroes
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// Eth802_3Filter
+/// * Rust equivalent for [_ETH_802_3_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_802_3_filter/)
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct Eth802_3Filter {
+    pub valid_fields: Eth802_3FilterFlags,
+    pub src_address: [u8; ETHER_ADDR_LENGTH],
+    pub dest_address: [u8; ETHER_ADDR_LENGTH],
+    pub protocol: u16,
+    pub padding: u16,
+}
+
+impl Default for Eth802_3Filter {
+    fn default() -> Self {
+        // SAFETY: It is safe to be zeroed because contains only values and arrays that
+        // can be default initialized with zeroes
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// IpSubnetV4
+/// * Rust equivalent for [_IP_SUBNET_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_subnet_v4/)
+#[repr(C, packed)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct IpSubnetV4 {
+    pub ip: u32,
+    pub ip_mask: u32,
+}
+
+/// IpRangeV4
+/// * Rust equivalent for [_IP_RANGE_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_range_v4/)
+#[repr(C, packed)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct IpRangeV4 {
+    pub start_ip: u32,
+    pub end_ip: u32,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union IpAddressV4Union {
+    pub ip_subnet: IpSubnetV4,
+    pub ip_range: IpRangeV4,
+}
+
+impl Default for IpAddressV4Union {
+    fn default() -> Self {
+        // SAFETY: This union contains either a `IpSubnetV4` or a `IpRangeV4`
+        // IpSubnetV4: when zeroed is equivalent to 0.0.0.0/0
+        // IpRangeV4: when zeroed is equivalent to 0.0.0.0 - 0.0.0.0
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// IpAddressV4
+/// * Rust equivalent for [_IP_ADDRESS_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v4/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct IpAddressV4 {
+    pub address_type: u32, // IP_SUBNET_V4_TYPE or IP_RANGE_V4_TYPE
+    pub address: IpAddressV4Union,
+}
+
+/// IpV4Filter
+/// * Rust equivalent for [_IP_V4_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_v4_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct IpV4Filter {
+    pub valid_fields: IpV4FilterFlags,
+    pub src_address: IpAddressV4,
+    pub dest_address: IpAddressV4,
+    pub protocol: u8,
+    pub padding: [u8; 3usize],
 }
 
 pub const IOCTL_NDISRD_GET_VERSION: u32 = 0x830020c0;

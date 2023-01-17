@@ -68,6 +68,79 @@ impl Drop for Ndisapi {
 }
 
 impl Ndisapi {
+    /// Flushes the packet queue in the NDIS filter driver for the requested interface.
+    pub fn flush_adapter_packet_queue(&self, adapter_handle: HANDLE) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE,
+                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Queries the packet filter mode for the selected network interface
+    pub fn get_adapter_mode(&self, adapter_handle: HANDLE) -> Result<FilterFlags> {
+        let mut adapter_mode = AdapterMode {
+            adapter_handle,
+            ..Default::default()
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_ADAPTER_MODE,
+                Some(&adapter_mode as *const AdapterMode as *const std::ffi::c_void),
+                size_of::<AdapterMode>() as u32,
+                Some(&mut adapter_mode as *mut AdapterMode as *mut std::ffi::c_void),
+                size_of::<AdapterMode>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(adapter_mode.flags)
+        }
+    }
+
+    /// Queries the adapter packet queue size for the given adapter handle
+    pub fn get_adapter_packet_queue_size(&self, adapter_handle: HANDLE) -> Result<u32> {
+        let mut queue_size = 0u32;
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_ADAPTER_QUEUE_SIZE,
+                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
+                Some(&mut queue_size as *mut u32 as *mut std::ffi::c_void),
+                size_of::<u32>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(queue_size)
+        }
+    }
+
     /// Queries information on available network interfaces
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
         let mut adapters: MaybeUninit<TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
@@ -268,6 +341,36 @@ impl Ndisapi {
         }
     }
 
+    /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated downwards the network stack
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe becasue EthMRequest<N>.packets may not be initilized or point to
+    /// the invalid memory.
+    pub unsafe fn send_packets_to_adapter<const N: usize>(
+        &self,
+        packets: &EthMRequest<N>,
+    ) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
+                Some(packets as *const EthMRequest<N> as *const std::ffi::c_void),
+                size_of::<EthMRequest<N>>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated upwards the network stack
     ///
     /// # Safety
@@ -298,22 +401,16 @@ impl Ndisapi {
         }
     }
 
-    /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated downwards the network stack
-    ///
-    /// # Safety
-    ///
-    /// This function is unsafe becasue EthMRequest<N>.packets may not be initilized or point to
-    /// the invalid memory.
-    pub unsafe fn send_packets_to_adapter<const N: usize>(
-        &self,
-        packets: &EthMRequest<N>,
-    ) -> Result<()> {
+    /// The user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
+    /// Helper driver will signal this event when TCP/IP bound adapter’s list changes (an example this happens on plug/unplug
+    /// network card, disable/enable network connection or etc.).
+    pub fn set_adapter_list_change_event(&self, event_handle: HANDLE) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                IOCTL_NDISRD_SEND_PACKETS_TO_ADAPTER,
-                Some(packets as *const EthMRequest<N> as *const std::ffi::c_void),
-                size_of::<EthMRequest<N>>() as u32,
+                IOCTL_NDISRD_SET_ADAPTER_EVENT,
+                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
                 None,
                 0,
                 None,
@@ -364,40 +461,14 @@ impl Ndisapi {
         }
     }
 
-    /// Queries the packet filter mode for the selected network interface
-    pub fn get_adapter_mode(&self, adapter_handle: HANDLE) -> Result<FilterFlags> {
-        let mut adapter_mode = AdapterMode {
-            adapter_handle,
-            ..Default::default()
-        };
-
+    /// The user application should create a Win32 event (with CreateEvent API call) and pass adapter handle and event handle
+    /// to this function. The filter driver will signal this event when the hardware filter for the adapter changes.
+    pub fn set_hw_packet_filter_event(&self, event_handle: HANDLE) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                IOCTL_NDISRD_GET_ADAPTER_MODE,
-                Some(&adapter_mode as *const AdapterMode as *const std::ffi::c_void),
-                size_of::<AdapterMode>() as u32,
-                Some(&mut adapter_mode as *mut AdapterMode as *mut std::ffi::c_void),
-                size_of::<AdapterMode>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(adapter_mode.flags)
-        }
-    }
-
-    /// Flushes the packet queue in the NDIS filter driver for the requested interface.
-    pub fn flush_adapter_packet_queue(&self, adapter_handle: HANDLE) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_FLUSH_ADAPTER_QUEUE,
-                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                IOCTL_NDISRD_SET_ADAPTER_HWFILTER_EVENT,
+                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
                 size_of::<HANDLE>() as u32,
                 None,
                 0,
@@ -441,30 +512,6 @@ impl Ndisapi {
         }
     }
 
-    /// Queries the adapter packet queue size for the given adapter handle
-    pub fn get_adapter_packet_queue_size(&self, adapter_handle: HANDLE) -> Result<u32> {
-        let mut queue_size = 0u32;
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_ADAPTER_QUEUE_SIZE,
-                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
-                size_of::<HANDLE>() as u32,
-                Some(&mut queue_size as *mut u32 as *mut std::ffi::c_void),
-                size_of::<u32>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(queue_size)
-        }
-    }
-
     /// A user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
     /// The filter driver will signal this event when a WAN (dial-up, DSL, ADSL or etc.) connection is established or terminated.
     pub fn set_wan_event(&self, event_handle: HANDLE) -> Result<()> {
@@ -488,16 +535,45 @@ impl Ndisapi {
         }
     }
 
-    /// The user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
-    /// Helper driver will signal this event when TCP/IP bound adapter’s list changes (an example this happens on plug/unplug
-    /// network card, disable/enable network connection or etc.).
-    pub fn set_adapter_list_change_event(&self, event_handle: HANDLE) -> Result<()> {
+    /// This function is used to perform a query operation on the adapter pointed by oid_request.adapter_handle.
+    /// With this function, it is possible to obtain various parameters of the network adapter, like the dimension
+    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
+    /// operations are declared in the file ntddndis.h.
+    pub fn ndis_get_request<const N: usize>(
+        &self,
+        oid_request: &mut PacketOidData<N>,
+    ) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                IOCTL_NDISRD_SET_ADAPTER_EVENT,
-                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
-                size_of::<HANDLE>() as u32,
+                IOCTL_NDISRD_NDIS_GET_REQUEST,
+                Some(oid_request as *const PacketOidData<N> as *const std::ffi::c_void),
+                size_of::<PacketOidData<N>>() as u32,
+                Some(oid_request as *const PacketOidData<N> as *mut std::ffi::c_void),
+                size_of::<PacketOidData<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// This function is used to perform a set operation on the adapter pointed by oid_request.adapter_handle.
+    /// With this function, it is possible to set various parameters of the network adapter, like the dimension
+    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
+    /// operations are declared in the file ntddndis.h.
+    pub fn ndis_set_request<const N: usize>(&self, oid_request: &PacketOidData<N>) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_NDIS_SET_REQUEST,
+                Some(oid_request as *const PacketOidData<N> as *const std::ffi::c_void),
+                size_of::<PacketOidData<N>>() as u32,
                 None,
                 0,
                 None,
@@ -512,17 +588,16 @@ impl Ndisapi {
         }
     }
 
-    /// The user application should create a Win32 event (with CreateEvent API call) and pass adapter handle and event handle
-    /// to this function. The filter driver will signal this event when the hardware filter for the adapter changes.
-    pub fn set_hw_packet_filter_event(&self, event_handle: HANDLE) -> Result<()> {
+    /// Queries the information about active WAN connections from the NDIS filter driver.
+    pub fn get_ras_links(&self, ras_links: &mut RasLinks) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                IOCTL_NDISRD_SET_ADAPTER_HWFILTER_EVENT,
-                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
-                size_of::<HANDLE>() as u32,
-                None,
-                0,
+                IOCTL_NDISRD_GET_RAS_LINKS,
+                Some(ras_links as *const RasLinks as *const std::ffi::c_void),
+                size_of::<RasLinks>() as u32,
+                Some(ras_links as *const RasLinks as *mut std::ffi::c_void),
+                size_of::<RasLinks>() as u32,
                 None,
                 None,
             )

@@ -1,5 +1,8 @@
 use bitflags::bitflags;
-use windows::{core::w, Win32::Foundation::HANDLE};
+use windows::{
+    core::w, Win32::Foundation::HANDLE, Win32::Networking::WinSock::IN6_ADDR,
+    Win32::Networking::WinSock::IN_ADDR,
+};
 
 pub const NDISRD_DRIVER_NAME: ::windows::core::PCWSTR = w!("\\\\.\\NDISRD");
 pub const ADAPTER_NAME_SIZE: usize = 256;
@@ -12,14 +15,6 @@ pub const IP_SUBNET_V4_TYPE: u32 = 1;
 pub const IP_RANGE_V4_TYPE: u32 = 2;
 pub const IP_SUBNET_V6_TYPE: u32 = 1;
 pub const IP_RANGE_V6_TYPE: u32 = 2;
-pub const IP_V6_FILTER_SRC_ADDRESS: u32 = 1;
-pub const IP_V6_FILTER_DEST_ADDRESS: u32 = 2;
-pub const IP_V6_FILTER_PROTOCOL: u32 = 4;
-pub const TCPUDP_SRC_PORT: u32 = 1;
-pub const TCPUDP_DEST_PORT: u32 = 2;
-pub const TCPUDP_TCP_FLAGS: u32 = 4;
-pub const ICMP_TYPE: u32 = 1;
-pub const ICMP_CODE: u32 = 2;
 pub const ETH_802_3: u32 = 1;
 pub const IPV4: u32 = 1;
 pub const IPV6: u32 = 2;
@@ -30,9 +25,6 @@ pub const FILTER_PACKET_DROP: u32 = 2;
 pub const FILTER_PACKET_REDIRECT: u32 = 3;
 pub const FILTER_PACKET_PASS_RDR: u32 = 4;
 pub const FILTER_PACKET_DROP_RDR: u32 = 5;
-pub const DATA_LINK_LAYER_VALID: u32 = 1;
-pub const NETWORK_LAYER_VALID: u32 = 2;
-pub const TRANSPORT_LAYER_VALID: u32 = 4;
 
 bitflags! {
     #[derive(Default)]
@@ -73,6 +65,41 @@ bitflags! {
         const IP_V4_FILTER_SRC_ADDRESS = 1;
         const IP_V4_FILTER_DEST_ADDRESS = 2;
         const IP_V4_FILTER_PROTOCOL = 4;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct IpV6FilterFlags: u32 {
+        const IP_V6_FILTER_SRC_ADDRESS = 1;
+        const IP_V6_FILTER_DEST_ADDRESS = 2;
+        const IP_V6_FILTER_PROTOCOL = 4;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct TcpUdpFilterFlags: u32 {
+        const TCPUDP_SRC_PORT = 1;
+        const TCPUDP_DEST_PORT = 2;
+        const TCPUDP_TCP_FLAGS = 4;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct IcmpFilterFlags: u32 {
+        const ICMP_TYPE = 1;
+        const ICMP_CODE = 2;
+    }
+}
+
+bitflags! {
+    #[derive(Default)]
+    pub struct FilterLayerFlags: u32 {
+        const DATA_LINK_LAYER_VALID = 1;
+        const NETWORK_LAYER_VALID = 2;
+        const TRANSPORT_LAYER_VALID = 4;
     }
 }
 
@@ -205,8 +232,8 @@ pub struct EthRequest {
 #[derive(Debug, Copy, Clone)]
 pub struct EthMRequest<const N: usize> {
     pub adapter_handle: HANDLE,
-    pub packet_number: ::std::os::raw::c_uint,
-    pub packet_success: ::std::os::raw::c_uint,
+    pub packet_number: u32,
+    pub packet_success: u32,
     pub packets: [EthPacket; N],
 }
 
@@ -315,7 +342,7 @@ impl Default for RasLinks {
 /// * Rust equivalent for [_ETH_802_3_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_802_3_filter/)
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
-pub struct Eth802_3Filter {
+pub struct Eth8023Filter {
     pub valid_fields: Eth802_3FilterFlags,
     pub src_address: [u8; ETHER_ADDR_LENGTH],
     pub dest_address: [u8; ETHER_ADDR_LENGTH],
@@ -323,7 +350,7 @@ pub struct Eth802_3Filter {
     pub padding: u16,
 }
 
-impl Default for Eth802_3Filter {
+impl Default for Eth8023Filter {
     fn default() -> Self {
         // SAFETY: It is safe to be zeroed because contains only values and arrays that
         // can be default initialized with zeroes
@@ -334,19 +361,19 @@ impl Default for Eth802_3Filter {
 /// IpSubnetV4
 /// * Rust equivalent for [_IP_SUBNET_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_subnet_v4/)
 #[repr(C, packed)]
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct IpSubnetV4 {
-    pub ip: u32,
-    pub ip_mask: u32,
+    pub ip: IN_ADDR,
+    pub ip_mask: IN_ADDR,
 }
 
 /// IpRangeV4
 /// * Rust equivalent for [_IP_RANGE_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_range_v4/)
 #[repr(C, packed)]
-#[derive(Default, Debug, Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct IpRangeV4 {
-    pub start_ip: u32,
-    pub end_ip: u32,
+    pub start_ip: IN_ADDR,
+    pub end_ip: IN_ADDR,
 }
 
 #[repr(C, packed)]
@@ -385,6 +412,205 @@ pub struct IpV4Filter {
     pub protocol: u8,
     pub padding: [u8; 3usize],
 }
+
+/// IpSubnetV6
+/// * Rust equivalent for [_IP_ADDRESS_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v6/)
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub struct IpSubnetV6 {
+    pub ip: IN6_ADDR,
+    pub ip_mask: IN6_ADDR,
+}
+
+/// IpRangeV6
+/// * Rust equivalent for [_IP_RANGE_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_range_v6/)
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub struct IpRangeV6 {
+    pub start_ip: IN6_ADDR,
+    pub end_ip: IN6_ADDR,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union IpAddressV6Union {
+    pub ip_subnet: IpSubnetV6,
+    pub ip_range: IpRangeV6,
+}
+
+impl Default for IpAddressV6Union {
+    fn default() -> Self {
+        // SAFETY: This union contains either a `IpSubnetV6` or a `IpRangeV6`
+        // IpSubnetV6: when zeroed is equivalent to ::/0
+        // IpRangeV6: when zeroed is equivalent to :: - ::
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// IpAddressV6
+/// * Rust equivalent for [_IP_ADDRESS_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v6/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct IpAddressV6 {
+    pub address_type: u32, // IP_SUBNET_V6_TYPE or IP_RANGE_V6_TYPE
+    pub address: IpAddressV6Union,
+}
+
+/// IpV6Filter
+/// * Rust equivalent for [_IP_V6_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_v6_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct IpV6Filter {
+    pub valid_fields: IpV6FilterFlags,
+    pub m_src_address: IpAddressV6,
+    pub m_dest_address: IpAddressV6,
+    pub m_protocol: u8,
+    pub padding: [u8; 3usize],
+}
+
+/// PortRange
+/// * Rust equivalent for [_PORT_RANGE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_port_range/)
+#[repr(C, packed)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct PortRange {
+    pub start_range: u16,
+    pub end_range: u16,
+}
+
+///
+/// * Rust equivalent for [_TCPUDP_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_tcpudp_filter/)
+#[repr(C, packed)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct TcpUdpFilter {
+    pub valid_fields: TcpUdpFilterFlags,
+    pub source_port: PortRange,
+    pub dest_port: PortRange,
+    pub tcp_flags: u8,
+}
+
+/// ByteRange
+/// * Rust equivalent for _BYTE_RANGE
+#[repr(C)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct ByteRange {
+    pub start_range: u8,
+    pub end_range: u8,
+}
+
+/// IcmpFilter
+/// * Rust equivalent for _ICMP_FILTER
+#[repr(C, packed)]
+#[derive(Default, Debug, Copy, Clone)]
+pub struct IcmpFilter {
+    pub valid_fields: IcmpFilterFlags,
+    pub type_range: ByteRange,
+    pub code_range: ByteRange,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union DataLinkLayerFilterUnion {
+    pub eth_8023_filter: Eth8023Filter,
+}
+
+impl Default for DataLinkLayerFilterUnion {
+    fn default() -> Self {
+        // SAFETY: This union contains either a `Eth8023Filter`
+        // Eth8023Filter: when zeroed is meaningless and ignored by code
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// DataLinkLayerFilter
+/// * Rust equivalent for [_DATA_LINK_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/data_link_layer_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct DataLinkLayerFilter {
+    pub union_selector: u32, // ETH_802_3 for Eth8023Filter
+    pub data_link_layer: DataLinkLayerFilterUnion,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union NetworkLayerFilterUnion {
+    pub ipv4: IpV4Filter,
+    pub ipv6: IpV6Filter,
+}
+
+impl Default for NetworkLayerFilterUnion {
+    fn default() -> Self {
+        // SAFETY: This union contains either a `IpV4Filter` or `IpV6Filter'
+        // IpV4Filter: when zeroed is meaningless and ignored by code
+        // IpV6Filter: when zeroed is meaningless and ignored by code
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// NetworkLayerFilter
+/// * Rust equivalent for [_NETWORK_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_network_layer_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct NetworkLayerFilter {
+    pub union_selector: u32, // IPV4 for IpV4Filter, IPV6 for IpV6Filter
+    pub network_layer: NetworkLayerFilterUnion,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union TransportLayerFilterUnion {
+    pub tcp_udp: TcpUdpFilter,
+    pub icmp: IcmpFilter,
+}
+
+impl Default for TransportLayerFilterUnion {
+    fn default() -> Self {
+        // SAFETY: This union contains either a `TcpUdpFilter` or `IcmpFilter'
+        // TcpUdpFilter: when zeroed is meaningless and ignored by code
+        // IcmpFilter: when zeroed is meaningless and ignored by code
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// TransportLayerFilter
+/// * Rust equivalent for [_TRANSPORT_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_transport_layer_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct TransportLayerFilter {
+    pub union_selector: u32, // TCPUDP for TcpUdpFilter, ICMP for IcmpFilter
+    pub transport_layer: TransportLayerFilterUnion,
+}
+
+/// StaticFilter
+/// * Rust equivalent for [_STATIC_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter/)
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct StaticFilter {
+    pub adapter_handle: u64, // Adapter handle extended to 64 bit size for structure compatibility across x64 and x86
+    pub direction_flags: DirectionFlags, // PACKET_FLAG_ON_SEND or/and PACKET_FLAG_ON_RECEIVE
+    pub filter_action: u32,  // FILTER_PACKET_XXX
+    pub valid_fields: FilterLayerFlags, // Specifies which of the fields below contain valid values and should be matched against the packet
+    pub last_reset: u32, // Time of the last counters reset (in seconds passed since 1 Jan 1980)
+    pub packets_in: u64, // Incoming packets passed through this filter
+    pub bytes_in: u64,   // Incoming bytes passed through this filter
+    pub packets_out: u64, // Outgoing packets passed through this filter
+    pub bytes_out: u64,  // Outgoing bytes passed through this filter
+    pub data_link_filter: DataLinkLayerFilter,
+    pub network_filter: NetworkLayerFilter,
+    pub transport_filter: TransportLayerFilter,
+}
+
+/// StaticFilterTable
+/// * Rust equivalent to the [_STATIC_FILTER_TABLE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter_table/)
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub struct StaticFilterTable<const N: usize> {
+    pub table_size: u32,
+    pub static_filters: [StaticFilter; N],
+}
+
+#[doc = " <summary>"]
+#[doc = " WinpkFilter fast I/O definitions"]
+#[doc = " </summary>"]
 
 pub const IOCTL_NDISRD_GET_VERSION: u32 = 0x830020c0;
 pub const IOCTL_NDISRD_GET_TCPIP_INTERFACES: u32 = 0x830020c4;

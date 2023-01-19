@@ -21,6 +21,17 @@ fn main() -> Result<()> {
             "\t FilterFlags: {:?}",
             driver.get_adapter_mode(value.get_handle()).unwrap()
         );
+
+        match driver.get_hw_packet_filter(value.get_handle()) {
+            Err(err) => println!(
+                "Getting OID_GEN_CURRENT_PACKET_FILTER Error: {}",
+                err.message().to_string_lossy()
+            ),
+            Ok(current_packet_filter) => println!(
+                "\t OID_GEN_CURRENT_PACKET_FILTER: 0x{:08X}",
+                current_packet_filter
+            ),
+        }
     }
 
     Ok(())

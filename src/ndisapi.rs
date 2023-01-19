@@ -1,7 +1,4 @@
-use std::{
-    ffi::c_uint,
-    mem::{size_of, MaybeUninit},
-};
+use std::mem::{size_of, MaybeUninit};
 
 use windows::{
     core::Result,
@@ -14,6 +11,8 @@ use windows::{
 };
 
 pub use crate::driver::*;
+
+const OID_GEN_CURRENT_PACKET_FILTER: u32 = 0x0001010E;
 
 pub struct Ndisapi {
     driver_handle: HANDLE,
@@ -186,9 +185,9 @@ impl Ndisapi {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_GET_VERSION,
-                Some(&mut version as *mut c_uint as _),
+                Some(&mut version as *mut u32 as _),
                 size_of::<u32>() as u32,
-                Some(&mut version as *mut c_uint as _),
+                Some(&mut version as *mut u32 as _),
                 size_of::<u32>() as u32,
                 None,
                 None,
@@ -883,5 +882,33 @@ impl Ndisapi {
         } else {
             Ok(())
         }
+    }
+
+    /// Queries current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
+    pub fn get_hw_packet_filter(&self, adapter_handle: HANDLE) -> Result<u32> {
+        let mut oid = PacketOidData::<{ size_of::<u32>() }> {
+            adapter_handle,
+            oid: OID_GEN_CURRENT_PACKET_FILTER,
+            length: size_of::<u32>() as u32,
+            data: [0u8; { size_of::<u32>() }],
+        };
+
+        self.ndis_get_request::<{ size_of::<u32>() }>(&mut oid)?;
+
+        Ok(u32::from_ne_bytes(oid.data))
+    }
+
+    /// Sets current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
+    pub fn set_hw_packet_filter(&self, adapter_handle: HANDLE, filter: u32) -> Result<()> {
+        let mut oid = PacketOidData::<{ size_of::<u32>() }> {
+            adapter_handle,
+            oid: OID_GEN_CURRENT_PACKET_FILTER,
+            length: size_of::<u32>() as u32,
+            data: filter.to_ne_bytes(),
+        };
+
+        self.ndis_set_request::<{ size_of::<u32>() }>(&mut oid)?;
+
+        Ok(())
     }
 }

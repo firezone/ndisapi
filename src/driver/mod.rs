@@ -608,9 +608,71 @@ pub struct StaticFilterTable<const N: usize> {
     pub static_filters: [StaticFilter; N],
 }
 
-#[doc = " <summary>"]
-#[doc = " WinpkFilter fast I/O definitions"]
-#[doc = " </summary>"]
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct FastIoWriteUnionStruct {
+    pub number_of_packets: u16,
+    pub write_in_progress_flag: u16,
+}
+
+/// FastIoWriteUnion
+/// * Rust equivalent for _FAST_IO_WRITE_UNION
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub union FastIoWriteUnion {
+    pub split: FastIoWriteUnionStruct,
+    pub join: u32,
+}
+
+impl Default for FastIoWriteUnion {
+    fn default() -> Self {
+        FastIoWriteUnion { join: 0 }
+    }
+}
+
+/// FastIoSectionHeader
+/// * Rust equivalent for _FAST_IO_SECTION_HEADER
+#[repr(C, packed)]
+#[derive(Default, Copy, Clone)]
+pub struct FastIoSectionHeader {
+    pub fast_io_write_union: FastIoWriteUnion,
+    pub read_in_progress_flag: u32,
+}
+
+/// FastIoSection
+/// * Rust equivalent for _FAST_IO_SECTION
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub struct FastIoSection<const N: usize> {
+    pub fast_io_header: FastIoSectionHeader,
+    pub fast_io_packets: [IntermediateBuffer; N],
+}
+
+impl<const N: usize> Default for FastIoSection<N> {
+    fn default() -> Self {
+        // SAFETY: This structure is filled by information by NDIS filter driver
+        // Zero initialized FastIoSection<N> is completely valid and ignored by the code
+        unsafe { std::mem::zeroed() }
+    }
+}
+
+/// InitializeFastIoParams
+/// * Rust equivalent for _INITIALIZE_FAST_IO_PARAMS
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct InitializeFastIoParams<const N: usize> {
+    pub header_ptr: *mut FastIoSection<N>,
+    pub data_size: u32,
+}
+
+/// UnsortedReadSendRequest
+/// * Rust equivalent for _UNSORTED_READ_SEND_REQUEST
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct UnsortedReadSendRequest<const N: usize> {
+    pub packets: *mut [IntermediateBuffer; N],
+    pub packets_num: u32,
+}
 
 pub const IOCTL_NDISRD_GET_VERSION: u32 = 0x830020c0;
 pub const IOCTL_NDISRD_GET_TCPIP_INTERFACES: u32 = 0x830020c4;

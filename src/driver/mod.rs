@@ -1,3 +1,4 @@
+use std::mem::size_of;
 use bitflags::bitflags;
 use windows::{
     core::w, Win32::Foundation::HANDLE, Win32::Networking::WinSock::IN6_ADDR,
@@ -262,21 +263,20 @@ pub struct AdapterEvent {
 /// PacketOidData
 /// * Rust equivalent for [_PACKET_OID_DATA](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_packet_oid_data/)
 #[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct PacketOidData<const N: usize> {
+pub struct PacketOidData<T> {
     pub adapter_handle: HANDLE,
     pub oid: u32,
     pub length: u32,
-    pub data: [u8; N],
+    pub data: T,
 }
 
-impl<const N: usize> PacketOidData<N> {
-    pub fn new(adapter_handle: HANDLE, oid: u32) -> Self {
+impl<T> PacketOidData<T> {
+    pub fn new(adapter_handle: HANDLE, oid: u32, data: T) -> Self {
         Self {
             adapter_handle,
             oid,
-            length: N as u32,
-            data: [0u8; N],
+            length: size_of::<T>() as u32,
+            data,
         }
     }
 }

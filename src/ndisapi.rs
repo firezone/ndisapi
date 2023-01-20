@@ -67,6 +67,36 @@ impl Drop for Ndisapi {
 }
 
 impl Ndisapi {
+    /// Adds Secondary Fast I/O shared memory section
+    pub fn add_secondary_fast_io<const N: usize>(
+        &self,
+        fast_io_section: &mut FastIoSection<N>,
+    ) -> Result<()> {
+        let params = InitializeFastIoParams::<N> {
+            header_ptr: fast_io_section as *mut FastIoSection<N>,
+            data_size: N as u32,
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_ADD_SECOND_FAST_IO_SECTION,
+                Some(&params as *const InitializeFastIoParams<N> as *const std::ffi::c_void),
+                size_of::<InitializeFastIoParams<N>>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Flushes the packet queue in the NDIS filter driver for the requested interface.
     pub fn flush_adapter_packet_queue(&self, adapter_handle: HANDLE) -> Result<()> {
         let result = unsafe {
@@ -140,6 +170,111 @@ impl Ndisapi {
         }
     }
 
+    /// Queries current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
+    pub fn get_hw_packet_filter(&self, adapter_handle: HANDLE) -> Result<u32> {
+        let mut oid = PacketOidData::new(adapter_handle, OID_GEN_CURRENT_PACKET_FILTER, 0u32);
+
+        self.ndis_get_request::<_>(&mut oid)?;
+
+        Ok(oid.data)
+    }
+
+    /// Queries static filter table from the NDIS filter driver
+    pub fn get_packet_filter_table<const N: usize>(
+        &self,
+        filter_table: &mut StaticFilterTable<N>,
+    ) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_PACKET_FILTERS,
+                None,
+                0,
+                Some(filter_table as *mut StaticFilterTable<N> as *mut std::ffi::c_void),
+                size_of::<StaticFilterTable<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Queries static filter table from the NDIS filter driver and resets the filter statistics
+    pub fn get_packet_filter_table_reset_stats<const N: usize>(
+        &self,
+        filter_table: &mut StaticFilterTable<N>,
+    ) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_PACKET_FILTERS_RESET_STATS,
+                None,
+                0,
+                Some(filter_table as *mut StaticFilterTable<N> as *mut std::ffi::c_void),
+                size_of::<StaticFilterTable<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Queries static filter table size from the NDIS filter driver
+    pub fn get_packet_filter_table_size(&self) -> Result<usize> {
+        let mut size = 0u32;
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_PACKET_FILTERS_TABLESIZE,
+                None,
+                0,
+                Some(&mut size as *mut u32 as *mut std::ffi::c_void),
+                size_of::<u32>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(size as usize)
+        }
+    }
+
+    /// Queries the information about active WAN connections from the NDIS filter driver.
+    pub fn get_ras_links(&self, ras_links: &mut RasLinks) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_GET_RAS_LINKS,
+                Some(ras_links as *const RasLinks as *const std::ffi::c_void),
+                size_of::<RasLinks>() as u32,
+                Some(ras_links as *const RasLinks as *mut std::ffi::c_void),
+                size_of::<RasLinks>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
     /// Queries information on available network interfaces
     pub fn get_tcpip_bound_adapters_info(&self) -> Result<Vec<NetworkAdapterInfo>> {
         let mut adapters: MaybeUninit<TcpAdapterList> = ::std::mem::MaybeUninit::uninit();
@@ -202,6 +337,92 @@ impl Ndisapi {
                 (version & (0xFF000000)) >> 24,
                 (version & (0xFF0000)) >> 16,
             ))
+        }
+    }
+
+    /// Initializes the fast i/o and submits the initial shared memory section into the NDIS filter driver
+    pub fn initialize_fast_io<const N: usize>(
+        &self,
+        fast_io_section: &mut FastIoSection<N>,
+    ) -> Result<()> {
+        let params = InitializeFastIoParams::<N> {
+            header_ptr: fast_io_section as *mut FastIoSection<N>,
+            data_size: N as u32,
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_INITIALIZE_FAST_IO,
+                Some(&params as *const InitializeFastIoParams<N> as *const std::ffi::c_void),
+                size_of::<InitializeFastIoParams<N>>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// This function is used to perform a query operation on the adapter pointed by oid_request.adapter_handle.
+    /// With this function, it is possible to obtain various parameters of the network adapter, like the dimension
+    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
+    /// operations are declared in the file ntddndis.h.
+    pub fn ndis_get_request<T>(
+        &self,
+        oid_request: &mut PacketOidData<T>,
+    ) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_NDIS_GET_REQUEST,
+                Some(oid_request as *const PacketOidData<T> as *const std::ffi::c_void),
+                size_of::<PacketOidData<T>>() as u32,
+                Some(oid_request as *const PacketOidData<T> as *mut std::ffi::c_void),
+                size_of::<PacketOidData<T>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// This function is used to perform a set operation on the adapter pointed by oid_request.adapter_handle.
+    /// With this function, it is possible to set various parameters of the network adapter, like the dimension
+    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
+    /// operations are declared in the file ntddndis.h.
+    pub fn ndis_set_request<T>(
+        &self,
+        oid_request: &PacketOidData<T>,
+    ) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_NDIS_SET_REQUEST,
+                Some(oid_request as *const PacketOidData<T> as *const std::ffi::c_void),
+                size_of::<PacketOidData<T>>() as u32,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -283,6 +504,58 @@ impl Ndisapi {
             Ok(packets.packet_success as usize)
         } else {
             Err(unsafe { GetLastError() }.into())
+        }
+    }
+
+    /// Reads the bunch of queued packets from the device NDIS filter driver (regardless of the network interface)
+    pub fn read_packets_unsorted<const N: usize>(
+        &self,
+        packets: &mut [IntermediateBuffer; N],
+    ) -> Result<usize> {
+        let mut request = UnsortedReadSendRequest::<N> {
+            packets: packets as *mut [IntermediateBuffer; N],
+            packets_num: N as u32,
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_READ_PACKETS_UNSORTED,
+                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(request.packets_num as usize)
+        }
+    }
+
+    /// Removes static filter table from the NDIS filter driver
+    pub fn reset_packet_filter_table(&self) -> Result<()> {
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_RESET_PACKET_FILTERS,
+                None,
+                0,
+                None,
+                0,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(())
         }
     }
 
@@ -370,6 +643,38 @@ impl Ndisapi {
         }
     }
 
+    /// Sends the bunch of packets to the device NDIS filter driver to forward to the network interface. Please note that target
+    /// adapter handle should be set in the IntermediateBuffer.header.adapter_handle
+    pub fn send_packets_to_adapters_unsorted<const N: usize>(
+        &self,
+        packets: &mut [IntermediateBuffer; N],
+        packets_num: usize,
+    ) -> Result<usize> {
+        let mut request = UnsortedReadSendRequest::<N> {
+            packets: packets as *mut [IntermediateBuffer; N],
+            packets_num: packets_num as u32,
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER_UNSORTED,
+                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(request.packets_num as usize)
+        }
+    }
+
     /// Writes the block of packets (IntermediateBuffer) to the driver to be indicated upwards the network stack
     ///
     /// # Safety
@@ -397,6 +702,38 @@ impl Ndisapi {
             Err(unsafe { GetLastError() }.into())
         } else {
             Ok(())
+        }
+    }
+
+    /// Sends the bunch of packets to the device NDIS filter driver to forward to the protocols layer(mstcp). Please note that target
+    /// adapter handle (to be indicated from) should be set in the IntermediateBuffer.header.adapter_handle
+    pub fn send_packets_to_mstcp_unsorted<const N: usize>(
+        &self,
+        packets: &mut [IntermediateBuffer; N],
+        packets_num: usize,
+    ) -> Result<usize> {
+        let mut request = UnsortedReadSendRequest::<N> {
+            packets: packets as *mut [IntermediateBuffer; N],
+            packets_num: packets_num as u32,
+        };
+
+        let result = unsafe {
+            DeviceIoControl(
+                self.driver_handle,
+                IOCTL_NDISRD_SEND_PACKET_TO_MSTCP_UNSORTED,
+                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
+                size_of::<UnsortedReadSendRequest<N>>() as u32,
+                None,
+                None,
+            )
+        };
+
+        if !result.as_bool() {
+            Err(unsafe { GetLastError() }.into())
+        } else {
+            Ok(request.packets_num as usize)
         }
     }
 
@@ -460,6 +797,15 @@ impl Ndisapi {
         }
     }
 
+    /// Sets current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
+    pub fn set_hw_packet_filter(&self, adapter_handle: HANDLE, filter: u32) -> Result<()> {
+        let mut oid = PacketOidData::new(adapter_handle, OID_GEN_CURRENT_PACKET_FILTER, filter);
+
+        self.ndis_set_request::<_>(&mut oid)?;
+
+        Ok(())
+    }
+
     /// The user application should create a Win32 event (with CreateEvent API call) and pass adapter handle and event handle
     /// to this function. The filter driver will signal this event when the hardware filter for the adapter changes.
     pub fn set_hw_packet_filter_event(&self, event_handle: HANDLE) -> Result<()> {
@@ -511,104 +857,6 @@ impl Ndisapi {
         }
     }
 
-    /// A user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
-    /// The filter driver will signal this event when a WAN (dial-up, DSL, ADSL or etc.) connection is established or terminated.
-    pub fn set_wan_event(&self, event_handle: HANDLE) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_SET_WAN_EVENT,
-                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
-                size_of::<HANDLE>() as u32,
-                None,
-                0,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// This function is used to perform a query operation on the adapter pointed by oid_request.adapter_handle.
-    /// With this function, it is possible to obtain various parameters of the network adapter, like the dimension
-    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
-    /// operations are declared in the file ntddndis.h.
-    pub fn ndis_get_request<const N: usize>(
-        &self,
-        oid_request: &mut PacketOidData<N>,
-    ) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_NDIS_GET_REQUEST,
-                Some(oid_request as *const PacketOidData<N> as *const std::ffi::c_void),
-                size_of::<PacketOidData<N>>() as u32,
-                Some(oid_request as *const PacketOidData<N> as *mut std::ffi::c_void),
-                size_of::<PacketOidData<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// This function is used to perform a set operation on the adapter pointed by oid_request.adapter_handle.
-    /// With this function, it is possible to set various parameters of the network adapter, like the dimension
-    /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
-    /// operations are declared in the file ntddndis.h.
-    pub fn ndis_set_request<const N: usize>(&self, oid_request: &PacketOidData<N>) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_NDIS_SET_REQUEST,
-                Some(oid_request as *const PacketOidData<N> as *const std::ffi::c_void),
-                size_of::<PacketOidData<N>>() as u32,
-                None,
-                0,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Queries the information about active WAN connections from the NDIS filter driver.
-    pub fn get_ras_links(&self, ras_links: &mut RasLinks) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_GET_RAS_LINKS,
-                Some(ras_links as *const RasLinks as *const std::ffi::c_void),
-                size_of::<RasLinks>() as u32,
-                Some(ras_links as *const RasLinks as *mut std::ffi::c_void),
-                size_of::<RasLinks>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
     /// Loads static filter table into the NDIS filter driver
     pub fn set_packet_filter_table<const N: usize>(
         &self,
@@ -634,118 +882,15 @@ impl Ndisapi {
         }
     }
 
-    /// Removes static filter table from the NDIS filter driver
-    pub fn reset_packet_filter_table(&self) -> Result<()> {
+    /// A user application should create a Win32 event (with CreateEvent API call) and pass the event handle to this function.
+    /// The filter driver will signal this event when a WAN (dial-up, DSL, ADSL or etc.) connection is established or terminated.
+    pub fn set_wan_event(&self, event_handle: HANDLE) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
-                IOCTL_NDISRD_RESET_PACKET_FILTERS,
-                None,
-                0,
-                None,
-                0,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Queries static filter table size from the NDIS filter driver
-    pub fn get_packet_filter_table_size(&self) -> Result<usize> {
-        let mut size = 0u32;
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_GET_PACKET_FILTERS_TABLESIZE,
-                None,
-                0,
-                Some(&mut size as *mut u32 as *mut std::ffi::c_void),
-                size_of::<u32>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(size as usize)
-        }
-    }
-
-    /// Queries static filter table from the NDIS filter driver
-    pub fn get_packet_filter_table<const N: usize>(
-        &self,
-        filter_table: &mut StaticFilterTable<N>,
-    ) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_GET_PACKET_FILTERS,
-                None,
-                0,
-                Some(filter_table as *mut StaticFilterTable<N> as *mut std::ffi::c_void),
-                size_of::<StaticFilterTable<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Queries static filter table from the NDIS filter driver and resets the filter statistics
-    pub fn get_packet_filter_table_reset_stats<const N: usize>(
-        &self,
-        filter_table: &mut StaticFilterTable<N>,
-    ) -> Result<()> {
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_GET_PACKET_FILTERS_RESET_STATS,
-                None,
-                0,
-                Some(filter_table as *mut StaticFilterTable<N> as *mut std::ffi::c_void),
-                size_of::<StaticFilterTable<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Initializes the fast i/o and submits the initial shared memory section into the NDIS filter driver
-    pub fn initialize_fast_io<const N: usize>(
-        &self,
-        fast_io_section: &mut FastIoSection<N>,
-    ) -> Result<()> {
-        let params = InitializeFastIoParams::<N> {
-            header_ptr: fast_io_section as *mut FastIoSection<N>,
-            data_size: N as u32,
-        };
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_INITIALIZE_FAST_IO,
-                Some(&params as *const InitializeFastIoParams<N> as *const std::ffi::c_void),
-                size_of::<InitializeFastIoParams<N>>() as u32,
+                IOCTL_NDISRD_SET_WAN_EVENT,
+                Some(&event_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
                 None,
                 0,
                 None,
@@ -758,157 +903,5 @@ impl Ndisapi {
         } else {
             Ok(())
         }
-    }
-
-    /// Reads the bunch of queued packets from the device NDIS filter driver (regardless of the network interface)
-    pub fn read_packets_unsorted<const N: usize>(
-        &self,
-        packets: &mut [IntermediateBuffer; N],
-    ) -> Result<usize> {
-        let mut request = UnsortedReadSendRequest::<N> {
-            packets: packets as *mut [IntermediateBuffer; N],
-            packets_num: N as u32,
-        };
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_READ_PACKETS_UNSORTED,
-                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(request.packets_num as usize)
-        }
-    }
-
-    /// Sends the bunch of packets to the device NDIS filter driver to forward to the network interface. Please note that target
-    /// adapter handle should be set in the IntermediateBuffer.header.adapter_handle
-    pub fn send_packets_to_adapters_unsorted<const N: usize>(
-        &self,
-        packets: &mut [IntermediateBuffer; N],
-        packets_num: usize,
-    ) -> Result<usize> {
-        let mut request = UnsortedReadSendRequest::<N> {
-            packets: packets as *mut [IntermediateBuffer; N],
-            packets_num: packets_num as u32,
-        };
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_SEND_PACKET_TO_ADAPTER_UNSORTED,
-                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(request.packets_num as usize)
-        }
-    }
-
-    /// Sends the bunch of packets to the device NDIS filter driver to forward to the protocols layer(mstcp). Please note that target
-    /// adapter handle (to be indicated from) should be set in the IntermediateBuffer.header.adapter_handle
-    pub fn send_packets_to_mstcp_unsorted<const N: usize>(
-        &self,
-        packets: &mut [IntermediateBuffer; N],
-        packets_num: usize,
-    ) -> Result<usize> {
-        let mut request = UnsortedReadSendRequest::<N> {
-            packets: packets as *mut [IntermediateBuffer; N],
-            packets_num: packets_num as u32,
-        };
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_SEND_PACKET_TO_MSTCP_UNSORTED,
-                Some(&request as *const UnsortedReadSendRequest<N> as *const std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                Some(&mut request as *mut UnsortedReadSendRequest<N> as *mut std::ffi::c_void),
-                size_of::<UnsortedReadSendRequest<N>>() as u32,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(request.packets_num as usize)
-        }
-    }
-
-    /// Adds Secondary Fast I/O shared memory section
-    pub fn add_secondary_fast_io<const N: usize>(
-        &self,
-        fast_io_section: &mut FastIoSection<N>,
-    ) -> Result<()> {
-        let params = InitializeFastIoParams::<N> {
-            header_ptr: fast_io_section as *mut FastIoSection<N>,
-            data_size: N as u32,
-        };
-
-        let result = unsafe {
-            DeviceIoControl(
-                self.driver_handle,
-                IOCTL_NDISRD_ADD_SECOND_FAST_IO_SECTION,
-                Some(&params as *const InitializeFastIoParams<N> as *const std::ffi::c_void),
-                size_of::<InitializeFastIoParams<N>>() as u32,
-                None,
-                0,
-                None,
-                None,
-            )
-        };
-
-        if !result.as_bool() {
-            Err(unsafe { GetLastError() }.into())
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Queries current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
-    pub fn get_hw_packet_filter(&self, adapter_handle: HANDLE) -> Result<u32> {
-        let mut oid = PacketOidData::<{ size_of::<u32>() }> {
-            adapter_handle,
-            oid: OID_GEN_CURRENT_PACKET_FILTER,
-            length: size_of::<u32>() as u32,
-            data: [0u8; { size_of::<u32>() }],
-        };
-
-        self.ndis_get_request::<{ size_of::<u32>() }>(&mut oid)?;
-
-        Ok(u32::from_ne_bytes(oid.data))
-    }
-
-    /// Sets current hardware packet filter (OID_GEN_CURRENT_PACKET_FILTER) for the specified network interface
-    pub fn set_hw_packet_filter(&self, adapter_handle: HANDLE, filter: u32) -> Result<()> {
-        let mut oid = PacketOidData::<{ size_of::<u32>() }> {
-            adapter_handle,
-            oid: OID_GEN_CURRENT_PACKET_FILTER,
-            length: size_of::<u32>() as u32,
-            data: filter.to_ne_bytes(),
-        };
-
-        self.ndis_set_request::<{ size_of::<u32>() }>(&mut oid)?;
-
-        Ok(())
     }
 }

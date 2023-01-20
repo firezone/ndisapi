@@ -374,10 +374,7 @@ impl Ndisapi {
     /// With this function, it is possible to obtain various parameters of the network adapter, like the dimension
     /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
     /// operations are declared in the file ntddndis.h.
-    pub fn ndis_get_request<T>(
-        &self,
-        oid_request: &mut PacketOidData<T>,
-    ) -> Result<()> {
+    pub fn ndis_get_request<T>(&self, oid_request: &mut PacketOidData<T>) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
@@ -402,10 +399,7 @@ impl Ndisapi {
     /// With this function, it is possible to set various parameters of the network adapter, like the dimension
     /// of the internal buffers, the link speed or the counter of corrupted packets. The constants that define the
     /// operations are declared in the file ntddndis.h.
-    pub fn ndis_set_request<T>(
-        &self,
-        oid_request: &PacketOidData<T>,
-    ) -> Result<()> {
+    pub fn ndis_set_request<T>(&self, oid_request: &PacketOidData<T>) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,

@@ -1,5 +1,5 @@
-use std::mem::size_of;
 use bitflags::bitflags;
+use std::mem::size_of;
 use windows::{
     core::w, Win32::Foundation::HANDLE, Win32::Networking::WinSock::IN6_ADDR,
     Win32::Networking::WinSock::IN_ADDR,

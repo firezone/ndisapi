@@ -23,11 +23,9 @@ fn main() -> Result<()> {
     let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME)
         .expect("WinpkFilter driver is not installed or failed to load!");
 
-    let (major_version, minor_version, revision) = driver.get_version()?;
-
     println!(
-        "Detected Windows Packet Filter version {}.{}.{}",
-        major_version, minor_version, revision
+        "Detected Windows Packet Filter version {}",
+        driver.get_version()?
     );
 
     let adapters = driver.get_tcpip_bound_adapters_info()?;
@@ -88,19 +86,11 @@ fn main() -> Result<()> {
                 Err(value) => println!("Err {:?}", value),
                 Ok(value) => {
                     if let Some(Ethernet2(value)) = value.link {
-                        println!(" Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                            value.source()[0],
-                            value.source()[1],
-                            value.source()[2],
-                            value.source()[3],
-                            value.source()[4],
-                            value.source()[5],
-                            value.destination()[0],
-                            value.destination()[1],
-                            value.destination()[2],
-                            value.destination()[3],
-                            value.destination()[4],
-                            value.destination()[5])
+                        println!(
+                            " Ethernet {} => {}",
+                            ndisapi::MacAddress::from_slice(&value.source()[..]).unwrap(),
+                            ndisapi::MacAddress::from_slice(&value.destination()[..]).unwrap(),
+                        )
                     }
 
                     match value.ip {
@@ -131,13 +121,13 @@ fn main() -> Result<()> {
                         Some(Icmpv4(value)) => println!(" Icmpv4 {:?}", value),
                         Some(Icmpv6(value)) => println!(" Icmpv6 {:?}", value),
                         Some(Udp(value)) => println!(
-                            "  UDP {:?} -> {:?}",
+                            "   UDP {:?} -> {:?}",
                             value.source_port(),
                             value.destination_port()
                         ),
                         Some(Tcp(value)) => {
                             println!(
-                                "  TCP {:?} -> {:?}",
+                                "   TCP {:?} -> {:?}",
                                 value.source_port(),
                                 value.destination_port()
                             );

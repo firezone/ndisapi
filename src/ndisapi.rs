@@ -2,60 +2,20 @@ use std::mem::{size_of, MaybeUninit};
 
 use windows::{
     core::Result,
-    Win32::Foundation::{CloseHandle, GetLastError, HANDLE},
+    Win32::Foundation::{GetLastError, HANDLE},
     Win32::Storage::FileSystem::{
         CreateFileW, FILE_ACCESS_FLAGS, FILE_FLAG_OVERLAPPED, FILE_SHARE_READ, FILE_SHARE_WRITE,
         OPEN_EXISTING,
     },
-    Win32::System::IO::DeviceIoControl,
+    Win32::{Foundation::CloseHandle, System::IO::DeviceIoControl},
 };
 
+mod helpers;
 pub use crate::driver::*;
-
-const OID_GEN_CURRENT_PACKET_FILTER: u32 = 0x0001010E;
+pub use crate::ndisapi::helpers::*;
 
 pub struct Ndisapi {
     driver_handle: HANDLE,
-}
-
-pub struct NetworkAdapterInfo {
-    name: String,
-    handle: HANDLE,
-    medium: u32,
-    hw_address: [u8; 6],
-    mtu: u16,
-}
-
-impl NetworkAdapterInfo {
-    fn new(name: String, handle: HANDLE, medium: u32, hw_address: [u8; 6], mtu: u16) -> Self {
-        Self {
-            name,
-            handle,
-            medium,
-            hw_address,
-            mtu,
-        }
-    }
-
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn get_handle(&self) -> HANDLE {
-        self.handle
-    }
-
-    pub fn get_medium(&self) -> u32 {
-        self.medium
-    }
-
-    pub fn get_hw_address(&self) -> &[u8; 6] {
-        &self.hw_address
-    }
-
-    pub fn get_mtu(&self) -> u16 {
-        self.mtu
-    }
 }
 
 impl Drop for Ndisapi {
@@ -313,7 +273,7 @@ impl Ndisapi {
     }
 
     /// Queries NDIS filter driver version
-    pub fn get_version(&self) -> Result<(u32, u32, u32)> {
+    pub fn get_version(&self) -> Result<Version> {
         let mut version = u32::MAX;
 
         let result = unsafe {
@@ -332,11 +292,11 @@ impl Ndisapi {
         if !result.as_bool() {
             Err(unsafe { GetLastError() }.into())
         } else {
-            Ok((
-                (version & (0xF000)) >> 12,
-                (version & (0xFF000000)) >> 24,
-                (version & (0xFF0000)) >> 16,
-            ))
+            Ok(Version {
+                major: (version & (0xF000)) >> 12,
+                minor: (version & (0xFF000000)) >> 24,
+                revision: (version & (0xFF0000)) >> 16,
+            })
         }
     }
 
@@ -495,7 +455,7 @@ impl Ndisapi {
         };
 
         if result.as_bool() {
-            Ok(packets.packet_success as usize)
+            Ok(packets.get_packet_success() as usize)
         } else {
             Err(unsafe { GetLastError() }.into())
         }

@@ -25,11 +25,9 @@ fn main() -> Result<()> {
     let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME)
         .expect("WinpkFilter driver is not installed or failed to load!");
 
-    let (major_version, minor_version, revision) = driver.get_version()?;
-
     println!(
-        "Detected Windows Packet Filter version {}.{}.{}",
-        major_version, minor_version, revision
+        "Detected Windows Packet Filter version {}",
+        driver.get_version()?
     );
 
     let adapters = driver.get_tcpip_bound_adapters_info()?;
@@ -68,10 +66,9 @@ fn main() -> Result<()> {
 
     // Initialize the read EthMRequest object
     for ib in &mut ibs {
-        to_read.packets[to_read.packet_number as usize] = ndisapi::EthPacket {
+        to_read.push(ndisapi::EthPacket {
             buffer: ib as *mut _,
-        };
-        to_read.packet_number += 1;
+        })?;
     }
 
     while packets_number > 0 {
@@ -90,7 +87,9 @@ fn main() -> Result<()> {
             packets_number = packets_number.saturating_sub(packets_read);
 
             for i in 0..packets_read {
-                let packet = unsafe { to_read.packets[i].get_buffer() };
+                let mut eth = to_read.at(i).unwrap();
+                let packet = unsafe { eth.get_buffer_mut() };
+
                 // Print packet information
                 if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                     println!(
@@ -110,19 +109,11 @@ fn main() -> Result<()> {
                     Err(value) => println!("Err {:?}", value),
                     Ok(value) => {
                         if let Some(Ethernet2(value)) = value.link {
-                            println!(" Ethernet {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X} => {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                                value.source()[0],
-                                value.source()[1],
-                                value.source()[2],
-                                value.source()[3],
-                                value.source()[4],
-                                value.source()[5],
-                                value.destination()[0],
-                                value.destination()[1],
-                                value.destination()[2],
-                                value.destination()[3],
-                                value.destination()[4],
-                                value.destination()[5])
+                            println!(
+                                " Ethernet {} => {}",
+                                ndisapi::MacAddress::from_slice(&value.source()[..]).unwrap(),
+                                ndisapi::MacAddress::from_slice(&value.destination()[..]).unwrap(),
+                            )
                         }
 
                         match value.ip {
@@ -153,13 +144,13 @@ fn main() -> Result<()> {
                             Some(Icmpv4(value)) => println!(" Icmpv4 {:?}", value),
                             Some(Icmpv6(value)) => println!(" Icmpv6 {:?}", value),
                             Some(Udp(value)) => println!(
-                                "  UDP {:?} -> {:?}",
+                                "   UDP {:?} -> {:?}",
                                 value.source_port(),
                                 value.destination_port()
                             ),
                             Some(Tcp(value)) => {
                                 println!(
-                                    "  TCP {:?} -> {:?}",
+                                    "   TCP {:?} -> {:?}",
                                     value.source_port(),
                                     value.destination_port()
                                 );
@@ -173,29 +164,27 @@ fn main() -> Result<()> {
                 }
 
                 if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
-                    to_adapter.packets[to_adapter.packet_number as usize] = to_read.packets[i];
-                    to_adapter.packet_number += 1;
+                    to_adapter.push(eth)?;
                 } else {
-                    to_mstcp.packets[to_mstcp.packet_number as usize] = to_read.packets[i];
-                    to_mstcp.packet_number += 1;
+                    to_mstcp.push(eth)?;
                 }
             }
 
             // Re-inject packets back into the network stack
-            if to_adapter.packet_number > 0 {
+            if to_adapter.get_packet_number() > 0 {
                 match unsafe { driver.send_packets_to_adapter::<PACKET_NUMBER>(&to_adapter) } {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to adapter. Error code = {err}"),
                 }
-                to_adapter.packet_number = 0;
+                to_adapter.reset();
             }
 
-            if !to_mstcp.packet_number > 0 {
+            if !to_mstcp.get_packet_number() > 0 {
                 match unsafe { driver.send_packets_to_mstcp::<PACKET_NUMBER>(&to_mstcp) } {
                     Ok(_) => {}
                     Err(err) => println!("Error sending packet to mstcp. Error code = {err}"),
                 };
-                to_mstcp.packet_number = 0;
+                to_mstcp.reset();
             }
 
             if packets_number == 0 {

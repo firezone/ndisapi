@@ -1,8 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 use windows::Win32::Foundation::HANDLE;
 
-pub const OID_GEN_CURRENT_PACKET_FILTER: u32 = 0x0001010E;
-
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
     pub major: u32,

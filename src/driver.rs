@@ -523,6 +523,7 @@ pub struct TcpUdpFilter {
     pub source_port: PortRange,
     pub dest_port: PortRange,
     pub tcp_flags: u8,
+    pub padding: [u8; 3usize],
 }
 
 /// ByteRange
@@ -642,6 +643,7 @@ pub struct StaticFilter {
 #[derive(Copy, Clone)]
 pub struct StaticFilterTable<const N: usize> {
     pub table_size: u32,
+    pub padding: u32,
     pub static_filters: [StaticFilter; N],
 }
 

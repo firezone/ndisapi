@@ -8,7 +8,11 @@ use windows::{
 
 #[derive(Parser)]
 struct Cli {
+    /// Network interface index (please use listadapters example to determine the right one)
+    #[clap(short, long)]
     interface_index: usize,
+    /// Number of packets to read from the specified network interface
+    #[clap(short, long)]
     packets_number: usize,
 }
 
@@ -93,12 +97,14 @@ fn main() -> Result<()> {
                 // Print packet information
                 if packet.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                     println!(
-                        "\n{} - MSTCP --> Interface\n",
+                        "\nMSTCP --> Interface ({} bytes) remaining packets {}\n",
+                        packet.get_length(),
                         packets_number + (packets_read - i)
                     );
                 } else {
                     println!(
-                        "\n{} - Interface --> MSTCP\n",
+                        "\nInterface --> MSTCP ({} bytes) remaining packets {}\n",
+                        packet.get_length(),
                         packets_number + (packets_read - i)
                     );
                 }

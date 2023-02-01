@@ -180,6 +180,14 @@ impl IntermediateBuffer {
     pub fn get_device_flags(&self) -> DirectionFlags {
         self.device_flags
     }
+
+    pub fn get_length(&self) -> u32 {
+        self.length
+    }
+
+    pub fn set_length(&mut self, length: u32) {
+        self.length = length
+    }
 }
 
 /// AdapterMode
@@ -499,9 +507,9 @@ pub struct IpAddressV6 {
 #[derive(Default, Copy, Clone)]
 pub struct IpV6Filter {
     pub valid_fields: IpV6FilterFlags,
-    pub m_src_address: IpAddressV6,
-    pub m_dest_address: IpAddressV6,
-    pub m_protocol: u8,
+    pub src_address: IpAddressV6,
+    pub dest_address: IpAddressV6,
+    pub protocol: u8,
     pub padding: [u8; 3usize],
 }
 
@@ -645,6 +653,22 @@ pub struct StaticFilterTable<const N: usize> {
     pub table_size: u32,
     pub padding: u32,
     pub static_filters: [StaticFilter; N],
+}
+
+impl<const N: usize> StaticFilterTable<N> {
+    pub fn new() -> Self {
+        Self {
+            table_size: N as u32,
+            padding: 0u32,
+            static_filters: [StaticFilter::default(); N],
+        }
+    }
+}
+
+impl<const N: usize> Default for StaticFilterTable<N> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[repr(C, packed)]

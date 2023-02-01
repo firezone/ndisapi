@@ -22,3 +22,4 @@ features = [
 [dev-dependencies]
 etherparse = "0.13"
 clap = {version = "4.0.32", features = ["derive"]}
+ctrlc = "3.2.4"

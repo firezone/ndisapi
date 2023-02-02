@@ -21,9 +21,16 @@ struct Cli {
     /// 2 - Redirect only HTTP(TCP port 80) packets for processing in user mode. Both IPv4 and IPv6 protocols.
     /// 3 - Drop all IPv4 ICMP packets. Redirect all other packets to user mode (default behaviour).
     /// 4 - Block IPv4 access to https://www.ntkernel.com. Pass all other packets without processing in user mode.
+    /// 5 - Redirect only ARP/RARP packets to user mode. Pass all others.
+    /// 6 - Redirect only outgoing ICMP ping request packets to user mode. Pass all others.
     #[clap(short, long, verbatim_doc_comment)]
     filter: usize,
 }
+
+// Reverse Addr Res packet
+const ETH_P_RARP: u16 = 0x8035;
+// Address Resolution packet
+const ETH_P_ARP: u16 = 0x0806;
 
 const IPPROTO_ICMP: u8 = 1;
 const IPPROTO_TCP: u8 = 6;
@@ -354,7 +361,7 @@ fn load_icmpv4_drop_filters(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
     ndisapi.set_packet_filter_table(&filter_table)
 }
 
-fn load_block_ntkernel_https(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
+fn load_block_ntkernel_https_filters(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
     let mut filter_table = ndisapi::StaticFilterTable::<2>::default();
 
     //**************************************************************************************
@@ -458,6 +465,129 @@ fn load_block_ntkernel_https(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
     ndisapi.set_packet_filter_table(&filter_table)
 }
 
+fn load_redirect_arp_filters(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
+    let mut filter_table = ndisapi::StaticFilterTable::<3>::default();
+
+    //**************************************************************************************
+    // 1. Redirects all ARP packets to be processes by user mode application
+    // Common values
+    filter_table.static_filters[0].adapter_handle = 0; // applied to all adapters
+    filter_table.static_filters[0].valid_fields = ndisapi::FilterLayerFlags::DATA_LINK_LAYER_VALID;
+    filter_table.static_filters[0].filter_action = ndisapi::FILTER_PACKET_REDIRECT;
+    filter_table.static_filters[0].direction_flags =
+        ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND_RECEIVE;
+    filter_table.static_filters[0]
+        .data_link_filter
+        .union_selector = ndisapi::ETH_802_3;
+    filter_table.static_filters[0]
+        .data_link_filter
+        .data_link_layer
+        .eth_8023_filter
+        .valid_fields = ndisapi::Eth802_3FilterFlags::ETH_802_3_PROTOCOL;
+    filter_table.static_filters[0]
+        .data_link_filter
+        .data_link_layer
+        .eth_8023_filter
+        .protocol = ETH_P_ARP;
+
+    //**************************************************************************************
+    // 2. Redirects all RARP packets to be processes by user mode application
+    // Common values
+    filter_table.static_filters[1].adapter_handle = 0; // applied to all adapters
+    filter_table.static_filters[1].valid_fields = ndisapi::FilterLayerFlags::DATA_LINK_LAYER_VALID;
+    filter_table.static_filters[1].filter_action = ndisapi::FILTER_PACKET_REDIRECT;
+    filter_table.static_filters[1].direction_flags =
+        ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND_RECEIVE;
+    filter_table.static_filters[1]
+        .data_link_filter
+        .union_selector = ndisapi::ETH_802_3;
+    filter_table.static_filters[1]
+        .data_link_filter
+        .data_link_layer
+        .eth_8023_filter
+        .valid_fields = ndisapi::Eth802_3FilterFlags::ETH_802_3_PROTOCOL;
+    filter_table.static_filters[1]
+        .data_link_filter
+        .data_link_layer
+        .eth_8023_filter
+        .protocol = ETH_P_RARP;
+
+    //***************************************************************************************
+    // 3. Pass all packets (skipped by previous filters) without processing in user mode
+    // Common values
+    filter_table.static_filters[2].adapter_handle = 0; // applied to all adapters
+    filter_table.static_filters[2].valid_fields = ndisapi::FilterLayerFlags::empty();
+    filter_table.static_filters[2].filter_action = ndisapi::FILTER_PACKET_PASS;
+    filter_table.static_filters[2].direction_flags = ndisapi::DirectionFlags::PACKET_FLAG_ON_RECEIVE
+        | ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND;
+
+    ndisapi.set_packet_filter_table(&filter_table)
+}
+
+fn load_redirect_icmp_req_filters(ndisapi: &ndisapi::Ndisapi) -> Result<()> {
+    let mut filter_table = ndisapi::StaticFilterTable::<2>::default();
+
+    //**************************************************************************************
+    // 1. Redirects all ARP packets to be processes by user mode application
+    // Common values
+    filter_table.static_filters[0].adapter_handle = 0; // applied to all adapters
+    filter_table.static_filters[0].valid_fields = ndisapi::FilterLayerFlags::NETWORK_LAYER_VALID
+        | ndisapi::FilterLayerFlags::TRANSPORT_LAYER_VALID;
+    filter_table.static_filters[0].filter_action = ndisapi::FILTER_PACKET_REDIRECT;
+    filter_table.static_filters[0].direction_flags = ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND;
+
+    filter_table.static_filters[0].network_filter.union_selector = ndisapi::IPV4;
+    filter_table.static_filters[0]
+        .network_filter
+        .network_layer
+        .ipv4
+        .valid_fields = ndisapi::IpV4FilterFlags::IP_V4_FILTER_PROTOCOL;
+    filter_table.static_filters[0]
+        .network_filter
+        .network_layer
+        .ipv4
+        .dest_address
+        .address_type = ndisapi::IP_SUBNET_V4_TYPE;
+    filter_table.static_filters[0]
+        .network_filter
+        .network_layer
+        .ipv4
+        .protocol = IPPROTO_ICMP;
+
+    // Transport layer filter
+    filter_table.static_filters[0]
+        .transport_filter
+        .union_selector = ndisapi::ICMP;
+    filter_table.static_filters[0]
+        .transport_filter
+        .transport_layer
+        .icmp
+        .valid_fields = ndisapi::IcmpFilterFlags::ICMP_TYPE;
+    filter_table.static_filters[0]
+        .transport_filter
+        .transport_layer
+        .icmp
+        .type_range
+        .start_range = 8; // ICMP PING REQUEST
+    filter_table.static_filters[0]
+        .transport_filter
+        .transport_layer
+        .icmp
+        .type_range
+        .end_range = 8;
+
+    //***************************************************************************************
+    // 2. Pass all packets (skipped by previous filters) without processing in user mode
+    // Common values
+    filter_table.static_filters[1].adapter_handle = 0; // applied to all adapters
+    filter_table.static_filters[1].valid_fields = ndisapi::FilterLayerFlags::empty();
+    filter_table.static_filters[1].filter_action = ndisapi::FILTER_PACKET_PASS;
+    filter_table.static_filters[1].direction_flags = ndisapi::DirectionFlags::PACKET_FLAG_ON_RECEIVE
+        | ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND;
+
+    ndisapi.set_packet_filter_table(&filter_table)
+}
+
 fn main() -> Result<()> {
     let Cli {
         mut interface_index,
@@ -486,7 +616,9 @@ fn main() -> Result<()> {
         1 => load_ipv4_dns_filters(&driver),
         2 => load_http_ipv4v6_filters(&driver),
         3 => load_icmpv4_drop_filters(&driver),
-        4 => load_block_ntkernel_https(&driver),
+        4 => load_block_ntkernel_https_filters(&driver),
+        5 => load_redirect_arp_filters(&driver),
+        6 => load_redirect_icmp_req_filters(&driver),
         _ => panic!("Filter set is not availbale"),
     };
 

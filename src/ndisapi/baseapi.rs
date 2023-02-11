@@ -93,8 +93,11 @@ impl Ndisapi {
             let adapters = unsafe { adapters.assume_init() };
 
             for i in 0..adapters.adapter_count as usize {
+                let adapter_name =
+                    String::from_utf8(adapters.adapter_name_list[i].to_vec()).unwrap();
+                let adapter_name = adapter_name.trim_end_matches(char::from(0)).to_owned();
                 let next = NetworkAdapterInfo::new(
-                    String::from_utf8(adapters.adapter_name_list[i].to_vec()).unwrap(),
+                    adapter_name,
                     adapters.adapter_handle[i],
                     adapters.adapter_medium_list[i],
                     adapters.current_address[i],

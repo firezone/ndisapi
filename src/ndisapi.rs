@@ -1,5 +1,5 @@
 use windows::{
-    core::Result,
+    core::{InParam, Result, PCWSTR},
     Win32::Foundation::CloseHandle,
     Win32::Foundation::{GetLastError, HANDLE},
     Win32::Storage::FileSystem::{
@@ -14,6 +14,7 @@ mod defs;
 mod fastio;
 mod filters;
 mod io;
+mod statics;
 
 pub use crate::driver::*;
 
@@ -33,7 +34,7 @@ impl Ndisapi {
     /// Initializes new Ndisapi instance opening the NDIS filter driver
     pub fn new<P>(filename: P) -> Result<Self>
     where
-        P: ::std::convert::Into<::windows::core::PCWSTR>,
+        P: Into<InParam<PCWSTR>>,
     {
         if let Ok(handle) = unsafe {
             CreateFileW(

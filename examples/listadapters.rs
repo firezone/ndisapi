@@ -1,3 +1,4 @@
+use ndisapi::Ndisapi;
 use windows::core::Result;
 
 const OID_802_3_CURRENT_ADDRESS: u32 = 0x01010102;
@@ -15,7 +16,16 @@ fn main() -> Result<()> {
 
     for (index, value) in adapters.iter().enumerate() {
         // Display the information about each network interface provided by the get_tcpip_bound_adapters_info
-        println!("{}. {}", index + 1, value.get_name());
+        let network_interface_name = match Ndisapi::get_friendly_adapter_name(value.get_name()) {
+            Ok(interface_name) => interface_name,
+            Err(err) => format!(r#"UNKNOWN NETWORK INTERFACE Error code: {err}"#),
+        };
+        println!(
+            "{}. {}\n\t{}",
+            index + 1,
+            network_interface_name,
+            value.get_name(),
+        );
         println!("\t Medium: {}", value.get_medium());
         println!(
             "\t MAC: {:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
@@ -38,10 +48,9 @@ fn main() -> Result<()> {
                 "Getting OID_GEN_CURRENT_PACKET_FILTER Error: {}",
                 err.message().to_string_lossy()
             ),
-            Ok(current_packet_filter) => println!(
-                "\t OID_GEN_CURRENT_PACKET_FILTER: 0x{:08X}",
-                current_packet_filter
-            ),
+            Ok(current_packet_filter) => {
+                println!("\t OID_GEN_CURRENT_PACKET_FILTER: 0x{current_packet_filter:08X}")
+            }
         }
 
         // Query MAC address of the network adapter using ndis_get_request directly

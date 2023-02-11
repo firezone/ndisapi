@@ -95,7 +95,7 @@ fn main() -> Result<()> {
 
             // Print some informations about the sliced packet
             match SlicedPacket::from_ethernet(&ib.buffer.0) {
-                Err(value) => println!("Err {:?}", value),
+                Err(value) => println!("Err {value:?}"),
                 Ok(value) => {
                     if let Some(Ethernet2(value)) = value.link {
                         println!(
@@ -113,7 +113,7 @@ fn main() -> Result<()> {
                                 value.destination_addr()
                             );
                             if !extensions.is_empty() {
-                                println!("    {:?}", extensions);
+                                println!("    {extensions:?}");
                             }
                         }
                         Some(Ipv6(value, extensions)) => {
@@ -123,15 +123,15 @@ fn main() -> Result<()> {
                                 value.destination_addr()
                             );
                             if !extensions.is_empty() {
-                                println!("    {:?}", extensions);
+                                println!("    {extensions:?}");
                             }
                         }
                         None => {}
                     }
 
                     match value.transport {
-                        Some(Icmpv4(value)) => println!(" Icmpv4 {:?}", value),
-                        Some(Icmpv6(value)) => println!(" Icmpv6 {:?}", value),
+                        Some(Icmpv4(value)) => println!(" Icmpv4 {value:?}"),
+                        Some(Icmpv6(value)) => println!(" Icmpv6 {value:?}"),
                         Some(Udp(value)) => println!(
                             "   UDP {:?} -> {:?}",
                             value.source_port(),
@@ -145,7 +145,7 @@ fn main() -> Result<()> {
                             );
                         }
                         Some(Unknown(ip_protocol)) => {
-                            println!("  Unknwon Protocol (ip protocol number {:?}", ip_protocol)
+                            println!("  Unknwon Protocol (ip protocol number {ip_protocol:?}")
                         }
                         None => {}
                     }

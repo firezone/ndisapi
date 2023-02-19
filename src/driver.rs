@@ -367,10 +367,11 @@ impl RasLinkInformation {
 
 /// RasLinks
 /// * Rust equivalent for [_RAS_LINKS](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ras_links/)
+/// This struct is too large to be allocated on the stack in Rust and may result in stack overflow
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct RasLinks {
-    pub number_of_links: u32,
+    number_of_links: u32,
     pub ras_links: [RasLinkInformation; RAS_LINKS_MAX],
 }
 
@@ -380,6 +381,12 @@ impl Default for RasLinks {
         // along with IOCTL_NDISRD_GET_RAS_LINKS. It is safe to be zeroed because contains only values and arrays that
         // can be default initialized with zeroes
         unsafe { std::mem::zeroed() }
+    }
+}
+
+impl RasLinks {
+    pub fn get_number_of_links(&self) -> usize {
+        self.number_of_links as usize
     }
 }
 

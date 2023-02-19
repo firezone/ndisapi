@@ -50,13 +50,13 @@ impl Ndisapi {
     }
 
     /// Queries the information about active WAN connections from the NDIS filter driver.
-    pub fn get_ras_links(&self, ras_links: &mut RasLinks) -> Result<()> {
+    pub fn get_ras_links(&self, adapter_handle: HANDLE, ras_links: &mut RasLinks) -> Result<()> {
         let result = unsafe {
             DeviceIoControl(
                 self.driver_handle,
                 IOCTL_NDISRD_GET_RAS_LINKS,
-                Some(ras_links as *const RasLinks as *const std::ffi::c_void),
-                size_of::<RasLinks>() as u32,
+                Some(&adapter_handle as *const HANDLE as *const std::ffi::c_void),
+                size_of::<HANDLE>() as u32,
                 Some(ras_links as *const RasLinks as *mut std::ffi::c_void),
                 size_of::<RasLinks>() as u32,
                 None,

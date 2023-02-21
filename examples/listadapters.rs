@@ -151,5 +151,9 @@ fn main() -> Result<()> {
         }
     }
 
+    let mtu_decrement = ndisapi::Ndisapi::get_mtu_decrement().unwrap_or(0);
+
+    println!("\nSystem wide MTU decrement: {mtu_decrement}");
+
     Ok(())
 }

@@ -2,8 +2,8 @@ use windows::{
     core::{Result, PCWSTR, PWSTR},
     s, w,
     Win32::System::Registry::{
-        RegCloseKey, RegEnumKeyExW, RegOpenKeyExW, RegQueryValueExA, RegQueryValueExW, HKEY,
-        HKEY_LOCAL_MACHINE, KEY_READ, REG_VALUE_TYPE,
+        RegCloseKey, RegEnumKeyExW, RegOpenKeyExW, RegQueryValueExA, RegQueryValueExW,
+        RegSetValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_READ, KEY_WRITE, REG_DWORD, REG_VALUE_TYPE,
     },
 };
 
@@ -13,10 +13,14 @@ use super::Ndisapi;
 
 const REGSTR_NETWORK_CONTROL_CLASS: ::windows::core::PCWSTR =
     w!("SYSTEM\\CurrentControlSet\\Control\\Class\\{4D36E972-E325-11CE-BFC1-08002BE10318}");
+const WINNT_REG_PARAM: ::windows::core::PCWSTR =
+    w!("SYSTEM\\CurrentControlSet\\Services\\ndisrd\\Parameters");
 const REGSTR_VAL_NAME: ::windows::core::PCWSTR = w!("Name");
 const REGSTR_COMPONENTID: ::windows::core::PCSTR = s!("ComponentId");
 const REGSTR_LINKAGE: ::windows::core::PCWSTR = w!("Linkage");
 const REGSTR_EXPORT: ::windows::core::PCSTR = s!("Export");
+const REGSTR_MTU_DECREMENT: ::windows::core::PCWSTR = w!("MTUDecrement");
+const REGSTR_STARTUP_MODE: ::windows::core::PCWSTR = w!("StartupMode");
 const REGSTR_COMPONENTID_NDISWANIP: &str = "ms_ndiswanip";
 const REGSTR_COMPONENTID_NDISWANIPV6: &str = "ms_ndiswanipv6";
 const REGSTR_COMPONENTID_NDISWANBH: &str = "ms_ndiswanbh";
@@ -232,7 +236,7 @@ impl Ndisapi {
         };
 
         let mut value_type = REG_VALUE_TYPE::default();
-        let mut data = vec![0u8; 512];
+        let mut data = vec![0u16; 256];
         let mut data_size = data.len() as u32;
         let mut friendly_name = String::default();
 
@@ -243,13 +247,13 @@ impl Ndisapi {
                     REGSTR_VAL_NAME,
                     None,
                     Some(&mut value_type),
-                    Some(data.as_mut_ptr()),
+                    Some(data.as_mut_ptr() as *const u8 as *mut u8),
                     Some(&mut data_size),
                 )
             };
 
             if result.is_ok() {
-                friendly_name = if let Ok(name) = str::from_utf8(&data[..data_size as usize]) {
+                friendly_name = if let Ok(name) = String::from_utf16(&data[..data_size as usize]) {
                     name.trim_end_matches(char::from(0)).to_string()
                 } else {
                     String::default()
@@ -265,6 +269,129 @@ impl Ndisapi {
             Err(result.into())
         } else {
             Ok(friendly_name)
+        }
+    }
+
+    /// This function sets a parameter in the registry key that the filter driver reads during its initialization.
+    /// The value set in the registry is subtracted from the actual MTU (Maximum Transmission Unit) when it is requested
+    /// by the MSTCP (Microsoft TCP/IP) from the network. Because this parameter is read during the initialization of the
+    /// filter driver, a system reboot is required for the changes to take effect. Requires Administrator permissions.
+    pub fn set_mtu_decrement(mtu_decrement: u32) -> Result<()> {
+        let mut hkey = HKEY::default();
+
+        let mut result =
+            unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, WINNT_REG_PARAM, 0, KEY_WRITE, &mut hkey) };
+
+        if result.is_ok() {
+            result = unsafe {
+                RegSetValueExW(
+                    hkey,
+                    REGSTR_MTU_DECREMENT,
+                    0,
+                    REG_DWORD,
+                    Some(mtu_decrement.to_ne_bytes().as_ref()),
+                )
+            };
+        }
+
+        if result.is_ok() {
+            Ok(())
+        } else {
+            Err(result.into())
+        }
+    }
+
+    /// This function retrives the value set by set_mtu_decrement from the registry. Note that if you have not
+    /// rebooted after calling set_mtu_decrement the return value in meaningless. If MTUDecrement value is not
+    /// present in the registry or error occured then None returned
+    pub fn get_mtu_decrement() -> Option<u32> {
+        let mut hkey = HKEY::default();
+
+        let mut result =
+            unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, WINNT_REG_PARAM, 0, KEY_READ, &mut hkey) };
+
+        let mut value_type = REG_VALUE_TYPE::default();
+        let mtu_decrement = 0u32;
+        let mut data_size = std::mem::size_of::<u32>() as u32;
+
+        if result.is_ok() {
+            result = unsafe {
+                RegQueryValueExW(
+                    hkey,
+                    REGSTR_MTU_DECREMENT,
+                    None,
+                    Some(&mut value_type),
+                    Some(&mtu_decrement as *const u32 as *mut u8),
+                    Some(&mut data_size),
+                )
+            };
+        }
+
+        if result.is_ok() {
+            Some(mtu_decrement)
+        } else {
+            None
+        }
+    }
+
+    /// This routine sets the default mode to be applied to each adapter as soon as it appears in the system.
+    /// It can be helpful in scenarios where you need to delay a network interface from operating until your
+    /// application has started. However, it's essential to note that this API call requires a system reboot to take effect.
+    /// Requires Administrator permissions to succeed.
+    pub fn set_adapters_startup_mode(startup_mode: u32) -> Result<()> {
+        let mut hkey = HKEY::default();
+
+        let mut result =
+            unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, WINNT_REG_PARAM, 0, KEY_WRITE, &mut hkey) };
+
+        if result.is_ok() {
+            result = unsafe {
+                RegSetValueExW(
+                    hkey,
+                    REGSTR_STARTUP_MODE,
+                    0,
+                    REG_DWORD,
+                    Some(startup_mode.to_ne_bytes().as_ref()),
+                )
+            };
+        }
+
+        if result.is_ok() {
+            Ok(())
+        } else {
+            Err(result.into())
+        }
+    }
+
+    /// Returns the current default filter mode value applied to each adapter when it appears in the system.
+    /// Note that if you have not rebooted after calling SetAdaptersStartupMode the return value in meaningless.
+    pub fn get_adapters_startup_mode() -> Option<u32> {
+        let mut hkey = HKEY::default();
+
+        let mut result =
+            unsafe { RegOpenKeyExW(HKEY_LOCAL_MACHINE, WINNT_REG_PARAM, 0, KEY_READ, &mut hkey) };
+
+        let mut value_type = REG_VALUE_TYPE::default();
+        let startup_mode = 0u32;
+        let mut data_size = std::mem::size_of::<u32>() as u32;
+
+        if result.is_ok() {
+            result = unsafe {
+                RegQueryValueExW(
+                    hkey,
+                    REGSTR_STARTUP_MODE,
+                    None,
+                    Some(&mut value_type),
+                    Some(&startup_mode as *const u32 as *mut u8),
+                    Some(&mut data_size),
+                )
+            };
+        }
+
+        if result.is_ok() {
+            Some(startup_mode)
+        } else {
+            None
         }
     }
 }

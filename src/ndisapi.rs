@@ -1,3 +1,19 @@
+//! # Module: NDISAPI
+//!
+//! This module provides a high-level interface to the NDISAPI Rust library for communicating with the Windows Packet Filter driver.
+//! It includes the definition and implementation of the `Ndisapi` struct, which represents the main entry point to interact with the driver.
+//!
+//! The NDISAPI module also contains submodules for various aspects of the NDISAPI functionality, such as:
+//! - base_api: Basic API operations
+//! - defs: Definitions of constants, structures, and enumerations
+//! - fastio_api: Fast I/O operations
+//! - filters_api: Filter management and manipulation
+//! - io_api: Basic I/O operations
+//! - static_api: Static methods for the NDISAPI
+//!
+//! For a detailed description of each submodule and the `Ndisapi` struct, refer to their respective documentation within the module.
+
+// Imports required dependencies
 use windows::{
     core::{InParam, Result, PCWSTR},
     Win32::Foundation::CloseHandle,
@@ -9,33 +25,55 @@ use windows::{
 };
 
 // Submodules
-mod baseapi;
+mod base_api;
 mod defs;
-mod fastio;
-mod filters;
-mod io;
-mod statics;
+mod fastio_api;
+mod filters_api;
+mod io_api;
+mod static_api;
 
+// Re-exports the `driver` submodule
 pub use crate::driver::*;
 
+// Defines the `Ndisapi` struct with a single field `driver_handle` of type HANDLE
 pub struct Ndisapi {
     driver_handle: HANDLE,
 }
 
+// Implements the Drop trait for the `Ndisapi` struct
 impl Drop for Ndisapi {
+    // Provides a custom implementation for the `drop` method
     fn drop(&mut self) {
+        // Closes the driver_handle when the `Ndisapi` instance goes out of scope
         unsafe {
             CloseHandle(self.driver_handle);
         }
     }
 }
 
+// Implements additional methods for the `Ndisapi` struct
 impl Ndisapi {
     /// Initializes new Ndisapi instance opening the NDIS filter driver
+    ///
+    /// # Arguments
+    ///
+    /// * `filename` - The name of the file representing the NDIS filter driver.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Self>` - A Result containing the Ndisapi instance if successful, or an error if not.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use ndisapi::Ndisapi;
+    /// let ndisapi = Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME).unwrap();
+    /// ```
     pub fn new<P>(filename: P) -> Result<Self>
     where
         P: Into<InParam<PCWSTR>>,
     {
+        // Attempts to create a file handle for the NDIS filter driver
         if let Ok(handle) = unsafe {
             CreateFileW(
                 filename,
@@ -47,10 +85,12 @@ impl Ndisapi {
                 None,
             )
         } {
+            // Returns a new Ndisapi instance with the created handle if successful
             Ok(Self {
                 driver_handle: handle,
             })
         } else {
+            // Returns an error if the file handle creation fails
             Err(unsafe { GetLastError() }.into())
         }
     }

@@ -9,13 +9,13 @@
 //! - fastio_api: Fast I/O operations
 //! - filters_api: Filter management and manipulation
 //! - io_api: Basic I/O operations
-//! - static_api: Static methods for the NDISAPI
+//! - static_api: Static and Registry related methods for the NDISAPI
 //!
 //! For a detailed description of each submodule and the `Ndisapi` struct, refer to their respective documentation within the module.
 
 // Imports required dependencies
 use windows::{
-    core::{InParam, Result, PCWSTR},
+    core::{Result, PCWSTR},
     Win32::Foundation::CloseHandle,
     Win32::Foundation::{GetLastError, HANDLE},
     Win32::Storage::FileSystem::{
@@ -51,6 +51,8 @@ pub use crate::driver::*;
 pub struct Ndisapi {
     // Represents a handle to the NDIS filter driver.
     driver_handle: HANDLE,
+    // Stores the driver registry key for parameters
+    registry_key: Vec<u16>,
 }
 
 // Implements the Drop trait for the `Ndisapi` struct
@@ -70,7 +72,7 @@ impl Ndisapi {
     ///
     /// # Arguments
     ///
-    /// * `filename` - The name of the file representing the NDIS filter driver.
+    /// * `driver_name` - The name of the file representing the NDIS filter driver.
     ///
     /// # Returns
     ///
@@ -80,16 +82,21 @@ impl Ndisapi {
     ///
     /// ```no_run
     /// use ndisapi::Ndisapi;
-    /// let ndisapi = Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME).unwrap();
+    /// let ndisapi = Ndisapi::new("NDISRD").unwrap();
     /// ```
-    pub fn new<P>(filename: P) -> Result<Self>
-    where
-        P: Into<InParam<PCWSTR>>,
-    {
+    pub fn new(driver_name: &str) -> Result<Self> {
+        // Create the filename and driver parameters registry path
+        let filename = format!(r"\\.\{driver_name}");
+        let registry_key = format!(r"SYSTEM\CurrentControlSet\Services\{driver_name}\Parameters");
+        let mut filename: Vec<u16> = filename.encode_utf16().collect();
+        let mut registry_key: Vec<u16> = registry_key.encode_utf16().collect();
+        filename.push(0);
+        registry_key.push(0);
+
         // Attempts to create a file handle for the NDIS filter driver
-        if let Ok(handle) = unsafe {
+        if let Ok(driver_handle) = unsafe {
             CreateFileW(
-                filename,
+                PCWSTR::from_raw(filename.as_ptr()),
                 FILE_ACCESS_FLAGS(0u32),
                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                 None,
@@ -100,11 +107,16 @@ impl Ndisapi {
         } {
             // Returns a new Ndisapi instance with the created handle if successful
             Ok(Self {
-                driver_handle: handle,
+                driver_handle,
+                registry_key,
             })
         } else {
             // Returns an error if the file handle creation fails
             Err(unsafe { GetLastError() }.into())
         }
+    }
+
+    pub fn get_driver_registry_key(&self) -> PCWSTR {
+        PCWSTR::from_raw(self.registry_key.as_ptr())
     }
 }

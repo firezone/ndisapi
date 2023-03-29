@@ -1,10 +1,10 @@
 //! # Submodule: Static NDISAPI functions
 //!
 //! This module provides utility functions for interacting with the Windows Registry related
-//! to network interfaces. It defines constants for various Registry keys, values, and data types
-//! that are used to access and modify settings related to network interfaces. It also contains an
-//! implementation of Ndisapi that includes functions for setting and retrieving Registry values
-//! related to network interfaces.
+//! to NDIS Filter driver and network interfaces. It defines constants for various Registry keys,
+//! values, and data types that are used to access and modify settings related to network interfaces.
+//! It also contains an //! implementation of Ndisapi that includes functions for setting and retrieving
+//! Registry values related to NDIS filter driver and network interfaces.
 //!
 
 use windows::{
@@ -17,7 +17,6 @@ use windows::{
 };
 
 use super::Ndisapi;
-use crate::driver::WINNT_NDISRD_REG_PARAM;
 use std::str;
 
 /// The registry key path for the network control class.
@@ -307,14 +306,13 @@ impl Ndisapi {
         // Convert the string to UTF16 array and get a pointer to it as PCWSTR
         let mut friendly_name_key = friendly_name_key.encode_utf16().collect::<Vec<u16>>();
         friendly_name_key.push(0);
-        let friendly_name_key_pwstr = PCWSTR::from_raw(friendly_name_key.as_ptr());
 
         let mut hkey = HKEY::default();
 
         let mut result = unsafe {
             RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
-                friendly_name_key_pwstr,
+                PCWSTR::from_raw(friendly_name_key.as_ptr()),
                 0,
                 KEY_READ,
                 &mut hkey,
@@ -370,13 +368,13 @@ impl Ndisapi {
     /// # Returns
     ///
     /// * `Result<()>` - Returns a `Result` that is `Ok(())` if the MTU decrement value is set successfully in the registry, or an error otherwise.
-    pub fn set_mtu_decrement(mtu_decrement: u32) -> Result<()> {
+    pub fn set_mtu_decrement(&self, mtu_decrement: u32) -> Result<()> {
         let mut hkey = HKEY::default();
 
         let mut result = unsafe {
             RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
-                WINNT_NDISRD_REG_PARAM,
+                self.get_driver_registry_key(),
                 0,
                 KEY_WRITE,
                 &mut hkey,
@@ -409,13 +407,13 @@ impl Ndisapi {
     /// # Returns
     ///
     /// * `Option<u32>` - Returns an `Option` containing the MTU decrement value if it is present in the registry and there are no errors, or `None` otherwise.
-    pub fn get_mtu_decrement() -> Option<u32> {
+    pub fn get_mtu_decrement(&self) -> Option<u32> {
         let mut hkey = HKEY::default();
 
         let mut result = unsafe {
             RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
-                WINNT_NDISRD_REG_PARAM,
+                self.get_driver_registry_key(),
                 0,
                 KEY_READ,
                 &mut hkey,
@@ -458,13 +456,13 @@ impl Ndisapi {
     /// # Returns
     ///
     /// * `Result<()>` - Returns a `Result` indicating whether the operation succeeded or an error occurred.
-    pub fn set_adapters_startup_mode(startup_mode: u32) -> Result<()> {
+    pub fn set_adapters_startup_mode(&self, startup_mode: u32) -> Result<()> {
         let mut hkey = HKEY::default();
 
         let mut result = unsafe {
             RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
-                WINNT_NDISRD_REG_PARAM,
+                self.get_driver_registry_key(),
                 0,
                 KEY_WRITE,
                 &mut hkey,
@@ -497,13 +495,13 @@ impl Ndisapi {
     ///
     /// * `Option<u32>` - Returns the current default startup mode as `Some(u32)` if the value is present in the registry,
     ///   or `None` if the value is not present or an error occurred.
-    pub fn get_adapters_startup_mode() -> Option<u32> {
+    pub fn get_adapters_startup_mode(&self) -> Option<u32> {
         let mut hkey = HKEY::default();
 
         let mut result = unsafe {
             RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
-                WINNT_NDISRD_REG_PARAM,
+                self.get_driver_registry_key(),
                 0,
                 KEY_READ,
                 &mut hkey,

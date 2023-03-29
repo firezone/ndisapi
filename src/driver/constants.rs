@@ -9,14 +9,6 @@
 
 // Import required external crates and types
 use bitflags::bitflags;
-use windows::core::w;
-
-/// NDISRD_DRIVER_NAME is the name used to reference the NDISRD driver in the system.
-pub const NDISRD_DRIVER_NAME: ::windows::core::PCWSTR = w!("\\\\.\\NDISRD");
-
-/// The registry key path for the NDISRD registry parameter.
-pub const WINNT_NDISRD_REG_PARAM: ::windows::core::PCWSTR =
-    w!(r"SYSTEM\CurrentControlSet\Services\ndisrd\Parameters");
 
 /// ADAPTER_NAME_SIZE is the maximum length for the adapter name.
 pub const ADAPTER_NAME_SIZE: usize = 256;

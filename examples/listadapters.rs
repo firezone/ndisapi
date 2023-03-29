@@ -9,7 +9,7 @@ use windows::core::Result;
 const OID_802_3_CURRENT_ADDRESS: u32 = 0x01010102;
 
 fn main() -> Result<()> {
-    let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME)
+    let driver = ndisapi::Ndisapi::new("NDISRD")
         .expect("WinpkFilter driver is not installed or failed to load!");
 
     println!(
@@ -151,7 +151,7 @@ fn main() -> Result<()> {
         }
     }
 
-    let mtu_decrement = ndisapi::Ndisapi::get_mtu_decrement().unwrap_or(0);
+    let mtu_decrement = driver.get_mtu_decrement().unwrap_or(0);
 
     println!("\nSystem wide MTU decrement: {mtu_decrement}");
 

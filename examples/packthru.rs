@@ -26,7 +26,7 @@ fn main() -> Result<()> {
 
     interface_index -= 1;
 
-    let driver = ndisapi::Ndisapi::new(ndisapi::NDISRD_DRIVER_NAME)
+    let driver = ndisapi::Ndisapi::new("NDISRD")
         .expect("WinpkFilter driver is not installed or failed to load!");
 
     println!(

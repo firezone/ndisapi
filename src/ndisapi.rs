@@ -35,8 +35,21 @@ mod static_api;
 // Re-exports the `driver` submodule
 pub use crate::driver::*;
 
-// Defines the `Ndisapi` struct with a single field `driver_handle` of type HANDLE
+/// The `Ndisapi` struct represents an instance of the NDIS filter driver that provides access to network adapters and packets.
+///
+/// This struct is used to communicate with the NDIS filter driver and access its functionalities. It contains a single field, `driver_handle`,
+/// which represents a handle to the driver. This handle is used to perform operations such as reading and writing packets, setting filters, and
+/// getting information about network adapters.
+///
+/// To use `Ndisapi`, you should first create an instance of the struct by calling the `Ndisapi::new()` function. This will return a `Result`
+/// that contains an instance of `Ndisapi` if the operation was successful, or an error if it failed. Once you have an instance of `Ndisapi`,
+/// you can call its methods to perform various network-related operations.
+///
+/// For example, you can use the `Ndisapi::read_packets()` method to read packets from the network adapter, or the `Ndisapi::send_packets_to_adapter()`
+/// method to write packets to the network adapter. You can also use the `Ndisapi::set_packet_filter_table()` method to set a filter that specifies which
+/// packets should be captured or dropped.
 pub struct Ndisapi {
+    // Represents a handle to the NDIS filter driver.
     driver_handle: HANDLE,
 }
 

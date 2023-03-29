@@ -37,31 +37,38 @@ pub const RAS_LINK_BUFFER_LENGTH: usize = 2048;
 /// RAS_LINKS_MAX is the maximum number of RAS links.
 pub const RAS_LINKS_MAX: usize = 256;
 
-/// IP_SUBNET_V4_TYPE and IP_RANGE_V4_TYPE are constants representing the types of IPv4 address ranges.
+/// Constant representing the IPv4 subnet type.
 pub const IP_SUBNET_V4_TYPE: u32 = 1;
+/// Constant representing the IPv4 address range type.
 pub const IP_RANGE_V4_TYPE: u32 = 2;
 
-/// IP_SUBNET_V6_TYPE and IP_RANGE_V6_TYPE are constants representing the types of IPv6 address ranges.
+/// Constant representing the IPv6 subnet type.
 pub const IP_SUBNET_V6_TYPE: u32 = 1;
+/// Constant representing the IPv6 address range type.
 pub const IP_RANGE_V6_TYPE: u32 = 2;
 
 /// ETH_802_3 is a constant representing the 802.3 Ethernet standard.
 pub const ETH_802_3: u32 = 1;
 
-/// IPV4 and IPV6 are constants representing the IPv4 and IPv6 network protocols, respectively.
+/// Constant representing the IPv4 network protocols.
 pub const IPV4: u32 = 1;
+/// Constant representing the IPv6 network protocols.
 pub const IPV6: u32 = 2;
 
-/// TCPUDP and ICMP are constants representing the transport layer protocols.
+/// Constant representing the TCP or UDP protocols.
 pub const TCPUDP: u32 = 1;
+/// Constant representing the ICMP protocol.
 pub const ICMP: u32 = 2;
 
-/// FILTER_PACKET_PASS, FILTER_PACKET_DROP, FILTER_PACKET_REDIRECT, FILTER_PACKET_PASS_RDR, and
-/// FILTER_PACKET_DROP_RDR are constants representing the possible actions for packet filtering.
+/// Allows a packet to pass through the filter without any modification.
 pub const FILTER_PACKET_PASS: u32 = 1;
+/// Drops the packet and prevents it from reaching the destination.
 pub const FILTER_PACKET_DROP: u32 = 2;
+/// Redirects the packet for processing in user-mode.
 pub const FILTER_PACKET_REDIRECT: u32 = 3;
+/// Allows the packet to pass through the filter and redirects a copy of it for processing by user-mode application.
 pub const FILTER_PACKET_PASS_RDR: u32 = 4;
+/// Drops the packet and and redirects a copy of it for processing by user-mode application.
 pub const FILTER_PACKET_DROP_RDR: u32 = 5;
 
 // Define bitflag structures for filter flags, direction flags, and various protocol-specific filter flags

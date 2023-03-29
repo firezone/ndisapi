@@ -11,7 +11,6 @@
 
 use super::base::*;
 
-/// FastIoWriteUnionStruct
 /// This structure contains the fields that make up the FastIoWriteUnion when accessed separately.
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
@@ -22,11 +21,11 @@ pub struct FastIoWriteUnionStruct {
     pub write_in_progress_flag: u16,
 }
 
-/// FastIoWriteUnion
-/// * Rust equivalent for _FAST_IO_WRITE_UNION
 /// This union represents a combined 32-bit field containing both the number of packets and a flag
 /// indicating whether a write operation is in progress. It provides the option to access the fields individually
 /// through the `split` field or the combined 32-bit value through the `join` field.
+///
+/// Rust equivalent for _FAST_IO_WRITE_UNION
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub union FastIoWriteUnion {
@@ -43,10 +42,10 @@ impl Default for FastIoWriteUnion {
     }
 }
 
-/// FastIoSectionHeader
-/// * Rust equivalent for _FAST_IO_SECTION_HEADER
 /// This structure is used as the header for the FastIoSection structure, containing the FastIoWriteUnion
 /// and a flag indicating whether a read operation is in progress.
+///
+/// Rust equivalent for _FAST_IO_SECTION_HEADER
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct FastIoSectionHeader {
@@ -56,10 +55,10 @@ pub struct FastIoSectionHeader {
     pub read_in_progress_flag: u32,
 }
 
-/// FastIoSection
-/// * Rust equivalent for _FAST_IO_SECTION
 /// This structure represents a Fast I/O section, which includes a FastIoSectionHeader and an array of IntermediateBuffer
 /// structures. It is used to store information about packet data and the state of read and write operations.
+///
+/// Rust equivalent for _FAST_IO_SECTION
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct FastIoSection<const N: usize> {
@@ -78,9 +77,8 @@ impl<const N: usize> Default for FastIoSection<N> {
     }
 }
 
-/// InitializeFastIoParams
-///
 /// A Rust struct that represents the parameters for fast I/O initialization.
+///
 /// Rust equivalent for _INITIALIZE_FAST_IO_PARAMS.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
@@ -91,9 +89,8 @@ pub struct InitializeFastIoParams<const N: usize> {
     pub data_size: u32,
 }
 
-/// UnsortedReadSendRequest
-///
 /// A Rust struct that represents an unsorted read/send request.
+///
 /// Rust equivalent for _UNSORTED_READ_SEND_REQUEST.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]

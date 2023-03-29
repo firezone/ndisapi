@@ -23,10 +23,9 @@ use windows::{Win32::Networking::WinSock::IN6_ADDR, Win32::Networking::WinSock::
 
 use super::constants::*;
 
-/// Eth802_3Filter
+/// This structure is used to define an Ethernet 802.3 filter based on various fields like source and destination addresses, and protocol.
 ///
 /// A Rust equivalent for the [_ETH_802_3_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_802_3_filter/) structure.
-/// This structure is used to define an Ethernet 802.3 filter based on various fields like source and destination addresses, and protocol.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct Eth8023Filter {
@@ -54,10 +53,9 @@ impl Default for Eth8023Filter {
     }
 }
 
-/// IpSubnetV4
+/// This structure is used to represent an IPv4 subnet based on an IP address and a subnet mask.
 ///
 /// A Rust equivalent for the [_IP_SUBNET_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_subnet_v4/) structure.
-/// This structure is used to represent an IPv4 subnet based on an IP address and a subnet mask.
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct IpSubnetV4 {
@@ -67,10 +65,9 @@ pub struct IpSubnetV4 {
     pub ip_mask: IN_ADDR,
 }
 
-/// IpRangeV4
+/// This structure is used to represent an IPv4 address range based on a start and end IP address.
 ///
 /// A Rust equivalent for the [_IP_RANGE_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_range_v4/) structure.
-/// This structure is used to represent an IPv4 address range based on a start and end IP address.
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct IpRangeV4 {
@@ -80,8 +77,6 @@ pub struct IpRangeV4 {
     pub end_ip: IN_ADDR,
 }
 
-/// IpAddressV4Union
-///
 /// A Rust union representing either an IPv4 subnet (IpSubnetV4) or an IPv4 address range (IpRangeV4).
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
@@ -101,10 +96,9 @@ impl Default for IpAddressV4Union {
     }
 }
 
-/// IpAddressV4
+/// Represents an IPv4 address in a format used by the packet filtering mechanism.
 ///
 /// A Rust equivalent for [_IP_ADDRESS_V4](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v4/).
-/// Represents an IPv4 address in a format used by the packet filtering mechanism.
 ///
 /// The `address_type` field indicates whether the address is a subnet or a range.
 /// The `address` field contains the actual IPv4 address information in a union format.
@@ -115,10 +109,9 @@ pub struct IpAddressV4 {
     pub address: IpAddressV4Union,
 }
 
-/// IpV4Filter
+/// Represents an IPv4 filter used by the packet filtering mechanism.
 ///
 /// A Rust equivalent for [_IP_V4_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_v4_filter/).
-/// Represents an IPv4 filter used by the packet filtering mechanism.
 ///
 /// The `valid_fields` field specifies which fields in the filter structure are used for filtering.
 /// The `src_address` field contains the source IPv4 address information.
@@ -135,10 +128,9 @@ pub struct IpV4Filter {
     pub padding: [u8; 3usize],
 }
 
-/// IpSubnetV6
+/// Represents an IPv6 subnet used by the packet filtering mechanism.
 ///
 /// A Rust equivalent for [_IP_SUBNET_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_subnet_v6/).
-/// Represents an IPv6 subnet used by the packet filtering mechanism.
 ///
 /// The `ip` field contains the IPv6 address.
 /// The `ip_mask` field contains the subnet mask.
@@ -149,10 +141,9 @@ pub struct IpSubnetV6 {
     pub ip_mask: IN6_ADDR,
 }
 
-/// IpRangeV6
+/// Represents an IPv6 address range used by the packet filtering mechanism.
 ///
 /// A Rust equivalent for [_IP_RANGE_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_range_v6/).
-/// Represents an IPv6 address range used by the packet filtering mechanism.
 ///
 /// The `start_ip` field contains the starting IPv6 address of the range.
 /// The `end_ip` field contains the ending IPv6 address of the range.
@@ -163,11 +154,10 @@ pub struct IpRangeV6 {
     pub end_ip: IN6_ADDR,
 }
 
-/// IpAddressV6Union
-///
-/// A Rust union that represents either an IPv6 subnet or an IPv6 address range.
 /// This structure is used to store information about a particular address space
 /// for packet filtering purposes.
+///
+/// A Rust union that represents either an IPv6 subnet or an IPv6 address range.
 ///
 /// The `ip_subnet` field contains the IPv6 subnet if the address space is a subnet.
 /// The `ip_range` field contains the IPv6 address range if the address space is a range.
@@ -187,11 +177,9 @@ impl Default for IpAddressV6Union {
     }
 }
 
-/// IpAddressV6
-///
-/// A Rust struct that represents an IPv6 address.
-/// Rust equivalent for [_IP_ADDRESS_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v6/).
 /// This structure is used to store information about an IPv6 address for packet filtering purposes.
+///
+/// Rust equivalent for [_IP_ADDRESS_V6](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_address_v6/).
 ///
 /// The `address_type` field indicates whether the address is a subnet (IP_SUBNET_V6_TYPE) or a range (IP_RANGE_V6_TYPE).
 /// The `address` field contains the specific IPv6 address data, either a subnet or an address range, depending on the `address_type`.
@@ -202,11 +190,9 @@ pub struct IpAddressV6 {
     pub address: IpAddressV6Union,
 }
 
-/// IpV6Filter
-///
-/// A Rust struct that represents an IPv6 filter.
-/// Rust equivalent for [_IP_V6_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_v6_filter/).
 /// This structure is used to define packet filtering rules for IPv6 packets.
+///
+/// Rust equivalent for [_IP_V6_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ip_v6_filter/).
 ///
 /// The `valid_fields` field contains flags that specify which fields of the filter are active.
 /// The `src_address` and `dest_address` fields store information about the source and destination IPv6 addresses respectively.
@@ -222,11 +208,9 @@ pub struct IpV6Filter {
     pub padding: [u8; 3usize],
 }
 
-/// PortRange
-///
-/// A Rust struct that represents a range of port numbers.
-/// Rust equivalent for [_PORT_RANGE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_port_range/).
 /// This structure is used to define a range of port numbers for packet filtering rules.
+///
+/// Rust equivalent for [_PORT_RANGE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_port_range/).
 ///
 /// The `start_range` field represents the starting port number in the range.
 /// The `end_range` field represents the ending port number in the range.
@@ -237,11 +221,9 @@ pub struct PortRange {
     pub end_range: u16,
 }
 
-/// TcpUdpFilter
-///
-/// A Rust struct that represents a TCP/UDP filter.
-/// Rust equivalent for [_TCPUDP_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_tcpudp_filter/).
 /// This structure is used to define filtering rules for TCP and UDP packets.
+///
+/// Rust equivalent for [_TCPUDP_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_tcpudp_filter/).
 ///
 /// The `valid_fields` field specifies which fields in the structure are valid for filtering.
 /// The `source_port` field represents the range of source port numbers to filter.
@@ -258,9 +240,8 @@ pub struct TcpUdpFilter {
     pub padding: [u8; 3usize],
 }
 
-/// ByteRange
-///
 /// A Rust struct that represents a range of byte values.
+///
 /// Rust equivalent for _BYTE_RANGE. This structure can be used to define
 /// filtering rules based on byte ranges, such as ICMP type or code ranges.
 ///
@@ -273,9 +254,8 @@ pub struct ByteRange {
     pub end_range: u8,
 }
 
-/// IcmpFilter
-///
 /// A Rust struct that represents an ICMP filter.
+///
 /// Rust equivalent for _ICMP_FILTER. This structure can be used to define
 /// filtering rules for ICMP packets based on ICMP type and code ranges.
 ///
@@ -290,9 +270,8 @@ pub struct IcmpFilter {
     pub code_range: ByteRange,
 }
 
-/// DataLinkLayerFilterUnion
-///
 /// A Rust union that holds an `Eth8023Filter`.
+///
 /// This union can be extended to include other data link layer filters if needed.
 /// Currently, it only contains an `Eth8023Filter` for filtering Ethernet/802.3 packets.
 #[repr(C, packed)]
@@ -309,9 +288,8 @@ impl Default for DataLinkLayerFilterUnion {
     }
 }
 
-/// DataLinkLayerFilter
-///
 /// A Rust struct that represents a data link layer filter.
+///
 /// Rust equivalent for [_DATA_LINK_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/data_link_layer_filter/)
 /// This struct can be used to filter packets at the data link layer (e.g., Ethernet/802.3) by specifying the filter type in `union_selector`.
 #[repr(C, packed)]
@@ -321,9 +299,8 @@ pub struct DataLinkLayerFilter {
     pub data_link_layer: DataLinkLayerFilterUnion,
 }
 
-/// NetworkLayerFilterUnion
-///
 /// A Rust union that holds either an `IpV4Filter` or an `IpV6Filter`.
+///
 /// This union can be used to filter packets at the network layer by specifying the appropriate filter type (IPv4 or IPv6).
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
@@ -341,9 +318,8 @@ impl Default for NetworkLayerFilterUnion {
     }
 }
 
-/// NetworkLayerFilter
-///
 /// A Rust struct that represents a network layer filter.
+///
 /// Rust equivalent for [_NETWORK_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_network_layer_filter/).
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
@@ -356,9 +332,8 @@ pub struct NetworkLayerFilter {
     pub network_layer: NetworkLayerFilterUnion,
 }
 
-/// TransportLayerFilterUnion
-///
 /// A Rust union that represents a transport layer filter.
+///
 /// Holds either a `TcpUdpFilter` or an `IcmpFilter`.
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
@@ -378,9 +353,8 @@ impl Default for TransportLayerFilterUnion {
     }
 }
 
-/// TransportLayerFilter
-///
 /// A Rust struct that represents a transport layer filter.
+///
 /// Rust equivalent for [_TRANSPORT_LAYER_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_transport_layer_filter/)
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
@@ -392,11 +366,11 @@ pub struct TransportLayerFilter {
     pub transport_layer: TransportLayerFilterUnion,
 }
 
-/// StaticFilter
-/// * Rust equivalent for [_STATIC_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter/)
 /// This structure is used to define a single static filter rule for packet filtering. Each rule can specify filtering criteria at
 /// the data link, network, and transport layers. The structure also includes counters for incoming and outgoing packets and bytes
 /// that match the filter rule.
+///
+/// * Rust equivalent for [_STATIC_FILTER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter/)
 #[repr(C, packed)]
 #[derive(Default, Copy, Clone)]
 pub struct StaticFilter {
@@ -426,10 +400,10 @@ pub struct StaticFilter {
     pub transport_filter: TransportLayerFilter,
 }
 
-/// StaticFilterTable
-/// * Rust equivalent to the [_STATIC_FILTER_TABLE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter_table/)
 /// This structure represents an array of static filter rules, each of which is defined by a `StaticFilter` structure.
 /// It is used to manage multiple filter rules for packet filtering in a table format.
+///
+/// * Rust equivalent to the [_STATIC_FILTER_TABLE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_static_filter_table/)
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct StaticFilterTable<const N: usize> {

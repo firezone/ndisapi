@@ -93,12 +93,10 @@ impl Default for IntermediateBufferHeaderUnion {
     }
 }
 
-/// IntermediateBuffer
-///
-/// Rust equivalent for [_INTERMEDIATE_BUFFER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_intermediate_buffer/).
-///
 /// The `IntermediateBuffer` structure represents an intermediate buffer that stores packet data along with some
 /// additional information. This structure is used internally by the packet filter driver.
+///
+/// Rust equivalent for [_INTERMEDIATE_BUFFER](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_intermediate_buffer/).
 ///
 /// # Fields
 /// * `header`: An `IntermediateBufferHeaderUnion` which is a union of `HANDLE` and `ListEntry`.
@@ -122,10 +120,9 @@ pub struct IntermediateBuffer {
     pub buffer: Buffer,
 }
 
-/// Buffer
+/// This structure represents the buffer used for storing the actual packet data.
 ///
 /// A wrapper around an array of bytes with a size of `MAX_ETHER_FRAME`.
-/// This structure represents the buffer used for storing the actual packet data.
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct Buffer(pub [u8; MAX_ETHER_FRAME]);
@@ -171,10 +168,9 @@ impl IntermediateBuffer {
     }
 }
 
-/// AdapterMode
+/// This structure is used to define the mode of an adapter with a specified handle and filter flags.
 ///
 /// A Rust equivalent for the [_ADAPTER_MODE](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/adapter_mode/) structure.
-/// This structure is used to define the mode of an adapter with a specified handle and filter flags.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone, Default)]
 pub struct AdapterMode {
@@ -184,10 +180,9 @@ pub struct AdapterMode {
     pub flags: FilterFlags,
 }
 
-/// EthPacket
+/// This structure represents an Ethernet packet with a pointer to an `IntermediateBuffer`.
 ///
 /// A Rust equivalent for the [_NDISRD_ETH_Packet](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ndisrd_eth_packet/) structure.
-/// This structure represents an Ethernet packet with a pointer to an `IntermediateBuffer`.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthPacket {
@@ -217,10 +212,9 @@ impl EthPacket {
     }
 }
 
-/// EthRequest
+/// This structure represents a request for an Ethernet packet, containing an adapter handle and an `EthPacket`.
 ///
 /// A Rust equivalent for the [_ETH_REQUEST](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_request/) structure.
-/// This structure represents a request for an Ethernet packet, containing an adapter handle and an `EthPacket`.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthRequest {
@@ -230,10 +224,9 @@ pub struct EthRequest {
     pub packet: EthPacket,
 }
 
-/// EthMRequest
+/// This structure represents a multiple Ethernet packets request, containing an adapter handle, packet number, packet success, and an array of `EthPacket`.
 ///
 /// A Rust equivalent for the [_ETH_M_REQUEST](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_eth_m_request/) structure.
-/// This structure represents a multiple Ethernet packets request, containing an adapter handle, packet number, packet success, and an array of `EthPacket`.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct EthMRequest<const N: usize> {
@@ -301,10 +294,9 @@ impl<const N: usize> EthMRequest<N> {
     }
 }
 
-/// AdapterEvent
+/// This structure represents an adapter event, containing an adapter handle and an event handle.
 ///
 /// A Rust equivalent for the [_ADAPTER_EVENT](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/adapter_event/) structure.
-/// This structure represents an adapter event, containing an adapter handle and an event handle.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct AdapterEvent {
@@ -314,10 +306,9 @@ pub struct AdapterEvent {
     pub event_handle: HANDLE,
 }
 
-/// PacketOidData
+/// This structure is used to make queries or set parameters on a network adapter.
 ///
 /// A Rust equivalent for the [_PACKET_OID_DATA](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_packet_oid_data/) structure.
-/// This structure is used to make queries or set parameters on a network adapter.
 #[repr(C, packed)]
 pub struct PacketOidData<T> {
     /// A handle to the network adapter associated with this query or parameter setting.
@@ -348,10 +339,9 @@ impl<T> PacketOidData<T> {
     }
 }
 
-/// RasLinkInformation
+/// This structure contains information about a RAS (Remote Access Service) link.
 ///
 /// A Rust equivalent for the [_RAS_LINK_INFO](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ras_link_info/) structure.
-/// This structure contains information about a RAS (Remote Access Service) link.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct RasLinkInformation {
@@ -401,10 +391,9 @@ impl RasLinkInformation {
     }
 }
 
-/// RasLinks
+/// This structure is a container for RAS (Remote Access Service) link information structures.
 ///
 /// A Rust equivalent for the [_RAS_LINKS](https://www.ntkernel.com/docs/windows-packet-filter-documentation/structures/_ras_links/) structure.
-/// This structure is a container for RAS (Remote Access Service) link information structures.
 /// Note that this struct may be too large to be allocated on the stack in Rust and may result in a stack overflow.
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]

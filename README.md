@@ -4,7 +4,9 @@
 [![Documentation](https://docs.rs/ndisapi/badge.svg)](https://docs.rs/ndisapi)
 [![License](https://img.shields.io/crates/l/ndisapi)](https://github.com/firezone/ndisapi/blob/main/LICENSE)
 
-NDISAPI is a Rust crate for interacting with the Windows Packet Filter API. It provides an easy-to-use, safe, and efficient interface to work with network adapters on Windows platform and manipulate network traffic.
+NDISAPI is a Rust crate for interacting with the [Windows Packet Filter](https://www.ntkernel.com/windows-packet-filter/) driver. It provides an easy-to-use, safe, and efficient interface to efficiently filter (inspect and modify) raw network packets at the NDIS level of the network stack with minimal impact on network activity.
+
+Windows Packet Filter (WinpkFilter) is a high-performance, lightweight packet filtering framework for Windows, enabling developers to efficiently inspect, modify, and control raw network packets at the NDIS level. With user-friendly APIs and support for various Windows versions, WinpkFilter simplifies network packet manipulation without requiring kernel-mode programming expertise.
 
 ## Features
 

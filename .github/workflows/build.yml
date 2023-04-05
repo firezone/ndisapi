@@ -74,13 +74,13 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Setup toolchain
         run: |
-          rustup update --no-self-update ${{ matrix.rust }} \
-          && rustup default ${{ matrix.rust }} \
-          && rustup component add clippy \
-          && rustup target add aarch64-pc-windows-msvc i686-pc-windows-msvc x86_64-pc-windows-msvc
+          rustup update --no-self-update ${{ matrix.rust }}
+          rustup default ${{ matrix.rust }}
+          rustup component add clippy
+          rustup target add aarch64-pc-windows-msvc i686-pc-windows-msvc x86_64-pc-windows-msvc
       - name: Run examples
         run: |
-          for example in examples/*.rs
-          do
-              cargo run --example "$(basename "${example%.rs}")" -- $args
-          done
+          cargo run --example filter
+          cargo run --example listadapters
+          cargo run --example packthru
+          cargo run --example passthru

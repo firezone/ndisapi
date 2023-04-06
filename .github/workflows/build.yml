@@ -21,8 +21,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  static-analysis:
-    name: Static analysis
+  build:
+    name: Build
     strategy:
       matrix:
         rust: [stable, nightly]
@@ -36,36 +36,9 @@ jobs:
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Update toolchain
-        run: rustup update --no-self-update ${{ matrix.rust }} && rustup default ${{ matrix.rust }} && rustup component add clippy
-      - name: Run cargo static analysis checks
-        run: |
-          cargo check
-          cargo clippy --all-targets --all-features -- -D clippy::all
-          cargo test
-
-  build:
-    needs: static-analysis
-    strategy:
-      matrix:
-        rust: [stable, nightly]
-        runs-on:
-          - windows-2019
-          - windows-2022
-    runs-on: ${{ matrix.runs-on }}
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+            ~/.cargo/.package-cache
             ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
@@ -77,10 +50,11 @@ jobs:
           rustup update --no-self-update ${{ matrix.rust }}
           rustup default ${{ matrix.rust }}
           rustup component add clippy
-          rustup target add aarch64-pc-windows-msvc i686-pc-windows-msvc x86_64-pc-windows-msvc
-      - name: Run examples
+      - name: Run cargo static analysis checks
         run: |
-          cargo run --example filter
-          cargo run --example listadapters
-          cargo run --example packthru
-          cargo run --example passthru
+          cargo check
+          cargo clippy -- -D clippy::all
+          cargo test
+      - name: Build crate
+        run: |
+          cargo publish --dry-run

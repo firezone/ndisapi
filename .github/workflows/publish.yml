@@ -25,7 +25,7 @@ jobs:
           rustup target add aarch64-pc-windows-msvc i686-pc-windows-msvc x86_64-pc-windows-msvc
       - name: Sanity check tag equals crate version
         run: |
-          pkg_version=$(awk -F ' = ' '$1 ~ /version/ { gsub(/[\"]/, "", $2); printf("%s",$2) }' Cargo.toml)
+          pkg_version=$(awk -F ' = ' '$1 ~ /version/ { gsub(/[\"]/, "", $2); printf("%s",$2); exit; }' Cargo.toml)
           if [[ "${{ github.ref }}" -eq "$pkg_version" ]]; then
             echo "Github ref ${{ github.ref }} equals from parsed package version $pkg_version. Continuing..."
           else

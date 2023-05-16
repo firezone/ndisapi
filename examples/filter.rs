@@ -678,7 +678,7 @@ fn main() -> Result<()> {
         unsafe {
             WaitForSingleObject(event, u32::MAX);
         }
-        while unsafe { driver.read_packet(&mut packet) }.ok().is_some() {
+        while unsafe { driver.read_packet(&packet) }.ok().is_some() {
             // Print packet information
             if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
                 println!("\nMSTCP --> Interface ({} bytes)\n", ib.get_length());

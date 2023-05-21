@@ -3,13 +3,15 @@
 use clap::Parser;
 use etherparse::{InternetSlice::*, LinkSlice::*, TransportSlice::*, *};
 use ndisapi::Ndisapi;
+use std::ffi::c_void;
 use windows::{
     core::Result,
     Win32::Foundation::{CloseHandle, BOOLEAN, HANDLE},
     Win32::System::Threading::{
-        CreateEventW, RegisterWaitForSingleObject, ResetEvent, UnregisterWaitEx, INFINITE, WT_EXECUTEINWAITTHREAD,},
+        CreateEventW, RegisterWaitForSingleObject, ResetEvent, UnregisterWaitEx, INFINITE,
+        WT_EXECUTEINWAITTHREAD,
+    },
 };
-use std::ffi::c_void;
 
 use std::{
     future::Future,
@@ -17,8 +19,7 @@ use std::{
     sync::{Arc, Mutex},
     task::{Context, Poll, Waker},
 };
-use tokio::{runtime::Builder
-    , sync::oneshot};
+use tokio::{runtime::Builder, sync::oneshot};
 use windows::Win32::Foundation::GetLastError;
 
 #[derive(Parser)]
@@ -30,16 +31,16 @@ struct Cli {
 
 // The struct NdisapiAdapter represents a network adapter with its associated driver and relevant handles.
 // It also contains an optional Waker for asynchronous operations.
-pub struct NdisapiAdapter{
+pub struct NdisapiAdapter {
     driver: Arc<ndisapi::Ndisapi>, // The network driver for the adapter.
-    event_handle: HANDLE, // The event handle associated with the network adapter.
-    adapter_handle: HANDLE, // The handle of the network adapter.
+    event_handle: HANDLE,          // The event handle associated with the network adapter.
+    adapter_handle: HANDLE,        // The handle of the network adapter.
     wait_object: HANDLE, // The handle for the wait object associated with the network adapter.
     waker: Option<Waker>, // An optional Waker used for asynchronous operations.
 }
 
 // The struct ReadAdapterFuture represents a future operation for reading packets from a network adapter.
-pub struct ReadAdapterFuture<'a>{
+pub struct ReadAdapterFuture<'a> {
     adapter: Arc<Mutex<NdisapiAdapter>>, // A thread-safe reference-counted smart pointer wrapping the network adapter.
     packet: &'a ndisapi::EthRequest, // A reference to the request to read a packet from the network adapter.
 }
@@ -52,7 +53,10 @@ impl<'a> Future for ReadAdapterFuture<'a> {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // Lock the adapter and check if the packet read operation is ready.
         let mut adapter = self.adapter.lock().unwrap();
-        if unsafe { adapter.driver.read_packet(self.packet) }.ok().is_some() {
+        if unsafe { adapter.driver.read_packet(self.packet) }
+            .ok()
+            .is_some()
+        {
             Poll::Ready(()) // If the packet read operation is ready, return Poll::Ready.
         } else {
             // If the packet read operation is not ready, set the waker for the current task and return Poll::Pending.
@@ -72,37 +76,43 @@ impl<'a> Future for ReadAdapterFuture<'a> {
 impl<'a> ReadAdapterFuture<'a> {
     // The new function creates a new instance of ReadAdapterFuture.
     pub fn new(adapter: &AsyncNdisapiAdapter, packet: &'a ndisapi::EthRequest) -> Self {
-        ReadAdapterFuture { adapter: adapter.inner(), packet } // Returns a new instance of ReadAdapterFuture.
+        ReadAdapterFuture {
+            adapter: adapter.inner(),
+            packet,
+        } // Returns a new instance of ReadAdapterFuture.
     }
 }
 
 // Implementing methods for the NdisapiAdapter struct.
 impl NdisapiAdapter {
     // The new function creates a new instance of NdisapiAdapter.
-    pub fn new(driver: Arc<ndisapi::Ndisapi>, adapter_handle: HANDLE, flags: ndisapi::FilterFlags) -> NdisapiAdapter {
+    pub fn new(
+        driver: Arc<ndisapi::Ndisapi>,
+        adapter_handle: HANDLE,
+        flags: ndisapi::FilterFlags,
+    ) -> NdisapiAdapter {
         let wait_object: HANDLE = HANDLE(0); // Initializing the wait object with a null handle.
-        let event_handle:HANDLE;
+        let event_handle: HANDLE;
         unsafe {
             // Creating a Win32 event without a name. The event is manual-reset and initially non-signaled.
             event_handle = CreateEventW(None, true, false, None).unwrap();
         }
 
         // Setting the event for packet capture for the specified adapter.
-        driver.set_packet_event(adapter_handle, event_handle).unwrap();
+        driver
+            .set_packet_event(adapter_handle, event_handle)
+            .unwrap();
 
         // Setting the operating mode for the specified adapter.
-        driver.set_adapter_mode(
-            adapter_handle,
-            flags,
-        ).unwrap();
+        driver.set_adapter_mode(adapter_handle, flags).unwrap();
 
         // Returning a new instance of NdisapiAdapter.
-        NdisapiAdapter{
+        NdisapiAdapter {
             driver,
             event_handle,
             adapter_handle,
             wait_object,
-            waker: None
+            waker: None,
         }
     }
 }
@@ -216,14 +226,12 @@ impl Drop for AsyncNdisapiAdapter {
     }
 }
 
-
 // This async function reads from the given AsyncNdisapiAdapter and handles the packets accordingly.
 async fn async_read(adapter: &AsyncNdisapiAdapter) -> Result<()> {
-
     // Declare the variables that will hold the driver and adapter handle.
     let driver: Arc<Ndisapi>;
     let adapter_handle: HANDLE;
-    
+
     // Lock the adapter to access its data.
     {
         let adapter = adapter.inner();
@@ -249,15 +257,9 @@ async fn async_read(adapter: &AsyncNdisapiAdapter) -> Result<()> {
 
         // Print packet information.
         if ib.get_device_flags() == ndisapi::DirectionFlags::PACKET_FLAG_ON_SEND {
-            println!(
-                "\nMSTCP --> Interface ({} bytes)\n",
-                ib.get_length(),
-            );
+            println!("\nMSTCP --> Interface ({} bytes)\n", ib.get_length(),);
         } else {
-            println!(
-                "\nInterface --> MSTCP ({} bytes)\n",
-                ib.get_length(),
-            );
+            println!("\nInterface --> MSTCP ({} bytes)\n", ib.get_length(),);
         }
 
         // Print some information about the sliced packet.
@@ -280,19 +282,18 @@ async fn async_read(adapter: &AsyncNdisapiAdapter) -> Result<()> {
 
 // This async function runs the main logic of the program.
 async fn main_async(adapter: &AsyncNdisapiAdapter) {
-    
     // Prompts the user to press ENTER to exit.
     println!("Press ENTER to exit");
 
     // Initializes a channel for communication between this function and a spawned thread.
     // `tx` is the transmitter and `rx` is the receiver end of the channel.
     let (tx, rx) = oneshot::channel::<()>();
-    
+
     // Spawns a new thread using Tokio's runtime, that waits for the user to press ENTER.
     tokio::spawn(async move {
         let mut line = String::new();
         std::io::stdin().read_line(&mut line).unwrap();
-        
+
         // Sends a message through the channel when the user presses ENTER.
         let _ = tx.send(());
     });
@@ -326,8 +327,10 @@ fn main() -> Result<()> {
     interface_index -= 1;
 
     // Create a new Ndisapi driver instance.
-    let driver = Arc::new(ndisapi::Ndisapi::new("NDISRD")
-        .expect("WinpkFilter driver is not installed or failed to load!"));
+    let driver = Arc::new(
+        ndisapi::Ndisapi::new("NDISRD")
+            .expect("WinpkFilter driver is not installed or failed to load!"),
+    );
 
     // Print the detected version of the Windows Packet Filter.
     println!(
@@ -344,13 +347,15 @@ fn main() -> Result<()> {
     }
 
     // Print the name of the selected interface.
-    println!(
-        "Using interface {}",
-        adapters[interface_index].get_name(),
-    );
+    println!("Using interface {}", adapters[interface_index].get_name(),);
 
     // Create a new instance of AsyncNdisapiAdapter with the selected interface.
-    let adapter = AsyncNdisapiAdapter::new(NdisapiAdapter::new(Arc::clone(&driver), adapters[interface_index].get_handle(),  ndisapi::FilterFlags::MSTCP_FLAG_SENT_RECEIVE_TUNNEL)).unwrap();
+    let adapter = AsyncNdisapiAdapter::new(NdisapiAdapter::new(
+        Arc::clone(&driver),
+        adapters[interface_index].get_handle(),
+        ndisapi::FilterFlags::MSTCP_FLAG_SENT_RECEIVE_TUNNEL,
+    ))
+    .unwrap();
 
     // Build a new Tokio runtime instance for executing async functions.
     let runtime = Builder::new_multi_thread()
@@ -358,7 +363,7 @@ fn main() -> Result<()> {
         .enable_all() // Enables all optional Tokio components.
         .build()
         .unwrap();
-    
+
     // Execute the main_async function using the previously defined runtime instance.
     runtime.block_on(main_async(&adapter));
 

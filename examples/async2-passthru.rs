@@ -14,9 +14,8 @@ use std::{
 use tokio::{runtime::Builder, sync::oneshot};
 use windows::{
     core::Result,
-    Win32::Foundation::{CloseHandle, BOOLEAN, HANDLE},
     Win32::{
-        Foundation::GetLastError,
+        Foundation::{GetLastError, CloseHandle, BOOLEAN, HANDLE},
         System::Threading::{
             CreateEventW, RegisterWaitForSingleObject, ResetEvent, UnregisterWaitEx, INFINITE,
             WT_EXECUTEINWAITTHREAD,

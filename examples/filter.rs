@@ -667,7 +667,7 @@ fn main() -> Result<()> {
     let mut ib = ndisapi::IntermediateBuffer::default();
 
     // Initialize EthPacket to pass to driver API
-    let mut packet = ndisapi::EthRequest {
+    let packet = ndisapi::EthRequest {
         adapter_handle: adapters[interface_index].get_handle(),
         packet: ndisapi::EthPacket {
             buffer: &mut ib as *mut ndisapi::IntermediateBuffer,

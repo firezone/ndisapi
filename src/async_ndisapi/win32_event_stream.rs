@@ -23,7 +23,7 @@
 //! safe, and idiomatic way to work with Win32 events in an asynchronous context. 
 //! This can be especially useful in scenarios involving network I/O, inter-process communication, 
 //! or any other situation where you need to wait for an event to occur without blocking your application.
-use futures::{task::AtomicWaker, Future};
+use futures::{task::AtomicWaker, Stream, stream::FusedStream};
 use std::{
     ffi::c_void,
     pin::Pin,
@@ -45,7 +45,7 @@ use windows::{
 };
 
 /// A future that resolves when a Win32 event is signaled.
-pub struct Win32EventFuture {
+pub struct Win32EventStream {
     #[allow(dead_code)]
     /// The Win32 event notification object.
     notif: Win32EventNotification, 
@@ -55,7 +55,7 @@ pub struct Win32EventFuture {
     ready: Arc<AtomicBool>,  
 }
 
-impl Win32EventFuture {
+impl Win32EventStream {
     /// Create a new `Win32EventFuture` instance with the specified event handle.
     pub fn new(event_handle: HANDLE) -> Result<Self> {
         let waker = Arc::new(AtomicWaker::new());
@@ -74,24 +74,31 @@ impl Win32EventFuture {
             )?,
         })
     }
+}
 
-    /// Poll for the packet event.
-    pub fn poll_packet_event(&mut self, cx: &mut Context) -> Poll<Result<()>> {
-        if self.ready.swap(false, Ordering::Relaxed) {
-            Poll::Ready(Ok(()))
+impl Stream for Win32EventStream {
+    type Item = Result<()>;
+
+    /// Polls the stream to check if the event is ready.
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = Pin::into_inner(self);
+
+        if this.ready.swap(false, Ordering::Relaxed) {
+            // The Win32 event is ready, so we clear the ready flag and wake the waker, if present.
+            // Then we reset the event to non-signaled state.
+            // We signal readiness by returning `Poll::Ready`.
+            Poll::Ready(Some(Ok(())))
         } else {
-            self.waker.register(cx.waker());
+            // The Win32 event is not ready, so we register the waker and return `Poll::Pending`.
+            this.waker.register(cx.waker());
             Poll::Pending
         }
     }
 }
 
-impl Future for Win32EventFuture {
-    type Output = Result<()>;
-
-    /// Poll the future to check if the event is ready.
-    fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        Pin::into_inner(self).poll_packet_event(cx)
+impl FusedStream for Win32EventStream {
+    fn is_terminated(&self) -> bool {
+        false
     }
 }
 

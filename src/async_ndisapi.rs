@@ -12,24 +12,22 @@
 //! packet sniffing and injection, implementing custom protocols, or interacting with the adapter in unusual ways that may not be
 //! supported by the standard networking stack.
 use crate::ndisapi::{EthPacket, FilterFlags, self};
-use std::{
-    pin::Pin,
-    sync::Arc,
-};
+use std::sync::Arc;
+use futures::StreamExt;
 use windows::{
     core::Result,
     Win32::{
-        Foundation::{GetLastError, HANDLE},
+        Foundation::{GetLastError, HANDLE, WIN32_ERROR},
         System::Threading::{
             CreateEventW,
         },
     },
 };
 
-use self::win32_event_future::Win32EventFuture;
+use self::win32_event_stream::Win32EventStream;
 
 // Submodules
-mod win32_event_future;
+mod win32_event_stream;
 
 /// The struct NdisapiAdapter represents a network adapter with its associated driver and relevant handles.
 pub struct NdisapiAdapter {
@@ -38,7 +36,7 @@ pub struct NdisapiAdapter {
     /// The handle of the network adapter.
     adapter_handle: HANDLE,
     /// A future that resolves when a Win32 event is signaled.
-    notif: Win32EventFuture,
+    notif: Win32EventStream,
 }
 
 impl NdisapiAdapter {
@@ -85,7 +83,7 @@ impl NdisapiAdapter {
         Ok(Self {
             adapter_handle,
             driver,
-            notif: Win32EventFuture::new(event_handle)?, // Creating a new Win32EventFuture with the event handle.
+            notif: Win32EventStream::new(event_handle)?, // Creating a new Win32EventFuture with the event handle.
         })
     }
 
@@ -143,29 +141,36 @@ impl NdisapiAdapter {
     /// where `EthPacket` is the original packet filled with the data from the network adapter.
     pub async fn read_packet(&mut self, packet: EthPacket) -> Result<EthPacket> {
         let driver = self.driver.clone();
-
+    
         // Initialize EthPacket to pass to driver API.
-        let request = ndisapi::EthRequest {
+        let mut request = ndisapi::EthRequest {
             adapter_handle: self.adapter_handle,
             packet,
         };
-
-        // first try to read packet
-        if unsafe { driver.read_packet(&request) }.is_ok() {
+    
+        // First try to read packet
+        if unsafe { driver.read_packet(&mut request) }.is_ok() {
             return Ok(packet);
         }
-
-        let result = Pin::new(&mut self.notif).await; // wait for packet event
-
-        match result {
-            Ok(_) => {
-                if unsafe { driver.read_packet(&request) }.ok().is_some() {
-                    Ok(packet)
-                } else {
-                    Err(unsafe { GetLastError() }.into())
+    
+        // Wait for packet event
+        match self.notif.next().await {
+            Some(result) => {
+                match result {
+                    Ok(_) => {
+                        if unsafe { driver.read_packet(&mut request) }.is_ok() {
+                            Ok(packet)
+                        } else {
+                            Err(unsafe { GetLastError() }.into())
+                        }
+                    },
+                    Err(e) => Err(e),
                 }
+            },
+            None => {
+                // The stream is exhausted. This should never happen in our case.
+                Err(WIN32_ERROR(0u32).into())
             }
-            Err(e) => Err(e),
         }
     }
 
@@ -211,17 +216,24 @@ impl NdisapiAdapter {
             return Ok(request.get_packet_success() as usize);
         }
 
-        let result = Pin::new(&mut self.notif).await; // wait for packet event
-
-        match result {
-            Ok(_) => {
-                if unsafe { driver.read_packets(&mut request) }.ok().is_some() {
-                    Ok(request.get_packet_success() as usize)
-                } else {
-                    Err(unsafe { GetLastError() }.into())
+         // Wait for packet event
+         match self.notif.next().await {
+            Some(result) => {
+                match result {
+                    Ok(_) => {
+                        if unsafe { driver.read_packets(&mut request) }.ok().is_some() {
+                            Ok(request.get_packet_success() as usize)
+                        } else {
+                            Err(unsafe { GetLastError() }.into())
+                        }
+                    },
+                    Err(e) => Err(e),
                 }
+            },
+            None => {
+                // The stream is exhausted. This should never happen in our case.
+                Err(WIN32_ERROR(0u32).into())
             }
-            Err(e) => Err(e),
         }
     }
 

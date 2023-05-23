@@ -25,9 +25,12 @@ use windows::{
 
 // The struct NdisapiAdapter represents a network adapter with its associated driver and relevant handles.
 pub struct NdisapiAdapter {
-    driver: Arc<ndisapi::Ndisapi>, // The network driver for the adapter.
-    adapter_handle: HANDLE,        // The handle of the network adapter.
-    notif: Win32EventFuture,       // A future that resolves when a Win32 event is signaled.
+    /// The network driver for the adapter.
+    driver: Arc<ndisapi::Ndisapi>, 
+    /// The handle of the network adapter.
+    adapter_handle: HANDLE,
+    /// A future that resolves when a Win32 event is signaled.
+    notif: Win32EventFuture,
 }
 
 impl NdisapiAdapter {

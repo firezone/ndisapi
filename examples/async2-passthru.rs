@@ -118,6 +118,11 @@ impl NdisapiAdapter {
     /// and the call to `GetLastError()`. Ensure the passed `EthPacket` is properly initialized
     /// and safe to use in this context.
     ///
+    /// The function also temporarily pins the `Win32EventFuture` instance to the stack with `Pin::new(&mut self.notif).await`.
+    /// While this is generally considered safe because `Win32EventFuture` and its internals do not move after being pinned,
+    /// and because the poll function does not invalidate or move these internals after pinning, any future changes to `Win32EventFuture` or its poll
+    /// implementation could potentially make this unsafe. Therefore, be sure to review these aspects if you modify `Win32EventFuture` or this function in the future.
+    ///
     /// # Errors
     ///
     /// Returns an error if the driver fails to read a packet from the network adapter, or if the

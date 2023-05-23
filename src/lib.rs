@@ -12,6 +12,7 @@
 
 mod driver;
 mod ndisapi;
+mod async_ndisapi;
 mod net;
 
 pub use crate::ndisapi::{
@@ -23,5 +24,7 @@ pub use crate::ndisapi::{
     ICMP, IPV4, IPV6, IP_RANGE_V4_TYPE, IP_RANGE_V6_TYPE, IP_SUBNET_V4_TYPE, IP_SUBNET_V6_TYPE,
     TCPUDP,
 };
+
+pub use crate::async_ndisapi::NdisapiAdapter;
 
 pub use net::MacAddress;

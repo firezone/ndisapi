@@ -208,7 +208,7 @@ impl Drop for Win32EventNotification {
             if !UnregisterWaitEx(self.wait_object, self.win32_event).as_bool() {
                 //log::error!("error deregistering notification: {}", GetLastError);
             }
-            drop(Box::from_raw(self.callback)); // Dropping the callback function.
+            Box::from_raw(self.callback); // Dropping the callback function.
         }
 
         unsafe {

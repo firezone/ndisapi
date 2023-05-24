@@ -307,6 +307,14 @@ impl<const N: usize> EthMRequest<N> {
             Err(ERROR_INVALID_PARAMETER.into())
         }
     }
+
+    /// Pushes a slice of `EthPacket` to the `packets` array if there's available space, returning an error if the array becomes full.
+    pub fn push_slice(&mut self, packets: &[EthPacket]) -> Result<()> {
+        for packet in packets {
+            self.push(*packet)?;
+        }
+        Ok(())
+    }
 }
 
 /// This structure represents an adapter event, containing an adapter handle and an event handle.

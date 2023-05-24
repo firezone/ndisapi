@@ -207,9 +207,8 @@ impl NdisapiAdapter {
         // Initialize EthMPacket to pass to driver API.
         let mut request = ndisapi::EthMRequest::<N>::new(self.adapter_handle);
 
-        for packet in packets {
-            request.push(*packet)?;
-        }
+        // Push packets to request
+        request.push_slice(packets)?;
 
         // first try to read packets
         if unsafe { driver.read_packets(&mut request) }.is_ok() {

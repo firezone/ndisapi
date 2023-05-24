@@ -13,7 +13,10 @@ readme = "README.md"
 
 [dependencies]
 bitflags = "2.1.0"
-futures = "0.3.28"
+futures = { version = "0.3.28", optional = true }
+
+[features]
+async = ["futures"]
 
 [dependencies.windows]
 version = "0.48.0"
@@ -34,3 +37,11 @@ clap = {version = "4.0.32", features = ["derive"]}
 ctrlc = "3.2.4"
 futures = "0.3.28"
 tokio = { version = "1.28.1", features = ["full"] }
+
+[[example]]
+name = "async_passthru"
+required-features = ["async"]
+
+[[example]]
+name = "async_packthru"
+required-features = ["async"]

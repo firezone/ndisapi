@@ -12,8 +12,9 @@
 
 mod driver;
 mod ndisapi;
-mod async_ndisapi;
 mod net;
+#[cfg(feature = "async")]
+mod async_ndisapi;
 
 pub use crate::ndisapi::{
     DirectionFlags, Eth802_3FilterFlags, EthMRequest, EthPacket, EthRequest, FastIoSection,
@@ -25,6 +26,7 @@ pub use crate::ndisapi::{
     TCPUDP,
 };
 
+#[cfg(feature = "async")]
 pub use crate::async_ndisapi::NdisapiAdapter;
 
 pub use net::MacAddress;
